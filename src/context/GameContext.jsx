@@ -104,9 +104,8 @@ export function GameProvider({ children }) {
     nextInstanceId = 1
     cardsRef.current = cardDataMap
 
-    const shuffled = shuffleArray(mainIds)
     const newBoard = createEmptyBoard()
-    newBoard.deck = shuffled.map(cid => makeInstance(cid, cardDataMap[cid]))
+    newBoard.deck = mainIds.map(cid => makeInstance(cid, cardDataMap[cid]))
     newBoard.extra = extraIds.map(cid => makeInstance(cid, cardDataMap[cid]))
     newBoard.lp = 4000
 
