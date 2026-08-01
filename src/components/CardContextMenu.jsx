@@ -46,22 +46,22 @@ export default function CardContextMenu({ x, y, card, zone, onAction, onClose })
   ]
 
   if (isHand || isDeck || isFree) {
-    actions.push({ label: 'Normal Summon (ATK)', icon: '⚔️', action: 'summon_atk' })
+    // actions.push({ label: 'Normal Summon (ATK)', icon: '⚔️', action: 'summon_atk' })
     actions.push({ label: 'Set (face-down DEF)', icon: '🔽', action: 'set_monster' })
-    actions.push({ label: 'Special Summon (ATK)', icon: '✨', action: 'ss_atk' })
-    actions.push({ label: 'Special Summon (DEF)', icon: '🛡️', action: 'ss_def' })
-    actions.push({ label: 'Activate / Set S/T', icon: '🪄', action: 'set_st' })
-    actions.push({ label: 'Set as Field Spell', icon: '🌍', action: 'set_field' })
-    actions.push({ sep: true })
-    actions.push({ label: 'Send to GY', icon: '💀', action: 'to_gy' })
-    actions.push({ label: 'Banish', icon: '🚫', action: 'to_banish' })
-    if (!isDeck) {
-      actions.push({ label: 'Return to Deck (top)', icon: '🔝', action: 'to_deck_top' })
-      actions.push({ label: 'Return to Deck (bottom)', icon: '🔚', action: 'to_deck_bottom' })
-    }
-    if (!isHand) {
-      actions.push({ label: 'Add to Hand', icon: '✋', action: 'to_hand' })
-    }
+    // actions.push({ label: 'Special Summon (ATK)', icon: '✨', action: 'ss_atk' })
+    // actions.push({ label: 'Special Summon (DEF)', icon: '🛡️', action: 'ss_def' })
+    // actions.push({ label: 'Activate / Set S/T', icon: '🪄', action: 'set_st' })
+    // actions.push({ label: 'Set as Field Spell', icon: '🌍', action: 'set_field' })
+    // actions.push({ sep: true })
+    // actions.push({ label: 'Send to GY', icon: '💀', action: 'to_gy' })
+    // actions.push({ label: 'Banish', icon: '🚫', action: 'to_banish' })
+    // if (!isDeck) {
+    //   actions.push({ label: 'Return to Deck (top)', icon: '🔝', action: 'to_deck_top' })
+    //   actions.push({ label: 'Return to Deck (bottom)', icon: '🔚', action: 'to_deck_bottom' })
+    // }
+    // if (!isHand) {
+    //   actions.push({ label: 'Add to Hand', icon: '✋', action: 'to_hand' })
+    // }
   }
 
   if (isOnBoard) {
@@ -84,27 +84,27 @@ export default function CardContextMenu({ x, y, card, zone, onAction, onClose })
         actions.push({ label: 'Set face-down', icon: '🔽', action: 'to_facedown_st' })
       }
     }
-    actions.push({ sep: true })
-    actions.push({ label: 'Send to GY', icon: '💀', action: 'to_gy' })
-    actions.push({ label: 'Banish', icon: '🚫', action: 'to_banish' })
-    actions.push({ label: 'Add to Hand', icon: '✋', action: 'to_hand' })
-    actions.push({ label: 'Return to Deck (top)', icon: '🔝', action: 'to_deck_top' })
+    // actions.push({ sep: true })
+    // actions.push({ label: 'Send to GY', icon: '💀', action: 'to_gy' })
+    // actions.push({ label: 'Banish', icon: '🚫', action: 'to_banish' })
+    // actions.push({ label: 'Add to Hand', icon: '✋', action: 'to_hand' })
+    // actions.push({ label: 'Return to Deck (top)', icon: '🔝', action: 'to_deck_top' })
   }
 
-  if (isGY || isBanish) {
-    actions.push({ label: 'Special Summon (ATK)', icon: '✨', action: 'ss_atk' })
-    actions.push({ label: 'Special Summon (DEF)', icon: '🛡️', action: 'ss_def' })
-    actions.push({ label: 'Add to Hand', icon: '✋', action: 'to_hand' })
-    actions.push({ label: 'Return to Deck (top)', icon: '🔝', action: 'to_deck_top' })
-    if (isGY) actions.push({ label: 'Banish', icon: '🚫', action: 'to_banish' })
-    if (isBanish) actions.push({ label: 'Send to GY', icon: '💀', action: 'to_gy' })
-  }
+  // if (isGY || isBanish) {
+    // actions.push({ label: 'Special Summon (ATK)', icon: '✨', action: 'ss_atk' })
+    // actions.push({ label: 'Special Summon (DEF)', icon: '🛡️', action: 'ss_def' })
+    // actions.push({ label: 'Add to Hand', icon: '✋', action: 'to_hand' })
+    // actions.push({ label: 'Return to Deck (top)', icon: '🔝', action: 'to_deck_top' })
+    // if (isGY) actions.push({ label: 'Banish', icon: '🚫', action: 'to_banish' })
+    // if (isBanish) actions.push({ label: 'Send to GY', icon: '💀', action: 'to_gy' })
+  // }
 
-  if (isExtra) {
-    actions.push({ label: 'Special Summon (ATK)', icon: '✨', action: 'ss_atk' })
-    actions.push({ label: 'Special Summon (DEF)', icon: '🛡️', action: 'ss_def' })
-    actions.push({ label: 'Add to Hand', icon: '✋', action: 'to_hand' })
-  }
+//   if (isExtra) {
+//     actions.push({ label: 'Special Summon (ATK)', icon: '✨', action: 'ss_atk' })
+//     actions.push({ label: 'Special Summon (DEF)', icon: '🛡️', action: 'ss_def' })
+//     actions.push({ label: 'Add to Hand', icon: '✋', action: 'to_hand' })
+//   }
 
   // Clamp position to viewport
   const menuWidth = 220
