@@ -69,7 +69,6 @@ function createEmptyBoard() {
     gy: [],
     egy: [],
     ebanish: [],
-    eextra: [],
     banish: [],
     deck: [],         // array of { id, cardId, data }
     extra: [],        // array of { id, cardId, data }
@@ -79,6 +78,7 @@ function createEmptyBoard() {
     emz1: null,
     emz2: null,
     extra_pile: null,
+    eextra_pile: null,
     lp: 4000,
   }
 }
@@ -199,7 +199,7 @@ export function GameProvider({ children }) {
       let card = null
 
       // Remove from source
-      if (['hand', 'gy', 'banish', 'extra', 'deck', 'free'].includes(fromZone)) {
+      if (['hand', 'egy', 'gy', 'ebanish', 'banish', 'eextra', 'extra', 'deck','efree', 'free'].includes(fromZone)) {
         const arr = prev[fromZone]
         const idx = arr.findIndex(c => c.id === instanceId)
         if (idx !== -1) {
@@ -218,7 +218,7 @@ export function GameProvider({ children }) {
       if (!card) return prev
 
       // Add to destination
-      if (['hand', 'gy', 'banish', 'extra', 'deck', 'free'].includes(toZone)) {
+      if (['hand', 'egy', 'gy', 'ebanish', 'banish', 'eextra', 'extra', 'deck','efree', 'free'].includes(toZone)) {
         prev[toZone].push(card)
       } else {
         if (prev[toZone] !== null) {
