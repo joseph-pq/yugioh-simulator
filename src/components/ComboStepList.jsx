@@ -169,7 +169,7 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
 function getActionIcon(action) {
   const map = {
     draw: '🃏', shuffle: '🔀', move: '↗️', pos: '🔄',
-    lp: '❤️', mill: '💀', todeck: '🔝', token: '✨', removetoken: '🗑️', effect: '⚡'
+    lp: '❤️', mill: '💀', todeck: '🔝', token: '✨', removetoken: '🗑️', effect: '⚡', skill: '🎲'
   }
   return map[action] || '▶️'
 }
@@ -186,6 +186,7 @@ function formatStep(step) {
     case 'token': return `Spawn Token → ${(step.to || step.t || '').toUpperCase()}`
     case 'removetoken': return `Remove Token (${(step.z || step.to || '').toUpperCase()})`
     case 'effect': return `Activate Effect (${(step.z || step.to || '').toUpperCase()})`
+    case 'skill': return 'Activate Skill'
     default: return step.a
   }
 }

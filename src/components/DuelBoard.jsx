@@ -3,6 +3,7 @@ import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, use
 import { useGame, ZONES, POSITION, MONSTER_ZONES, SPELL_ZONES } from '../context/GameContext'
 import { getCardImageUrl } from '../services/ygoproApi'
 import CardContextMenu from './CardContextMenu'
+import skillIcon from '../assets/skill.png'
 
 /**
  * Main Duel Board — Exact Duel Links Field Layout with:
@@ -16,6 +17,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
   const [contextMenu, setContextMenu] = useState(null)
   const [activeCard, setActiveCard] = useState(null)
   const [effectCardId, setEffectCardId] = useState(null) // Glow ONLY when effect is activated
+  const [skillActive, setSkillActive] = useState(false)
   const [flyingCard, setFlyingCard] = useState(null)
 
   const sensors = useSensors(
@@ -166,6 +168,12 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
     }
   }, [board, game])
 
+  const handleSkillClick = useCallback(() => {
+    game.activateSkill()
+    setSkillActive(true)
+    setTimeout(() => setSkillActive(false), 1200)
+  }, [game])
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col h-full select-none justify-between overflow-hidden">
@@ -253,7 +261,10 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
                 onSelectCard={onSelectCard}
                 onHoverCard={onHoverCard}
               />
-              <VerticalStackPileZone zone={ZONES.BANISH} cards={board.banish} label="BANISH" color="var(--color-accent-blue)" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              <div className="flex items-end gap-2">
+                <VerticalStackPileZone zone={ZONES.BANISH} cards={board.banish} label="BANISH" color="var(--color-accent-blue)" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <SkillActionButton onClick={handleSkillClick} isActive={skillActive} />
+              </div>
             </div>
 
           </div>
@@ -531,6 +542,20 @@ function VerticalStackPileZone({ zone, cards, label, color, effectCardId, onCont
         </div>
       )}
     </div>
+  )
+}
+
+function SkillActionButton({ onClick, isActive }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`shrink-0 rounded-xl p-1.5 flex items-center justify-center transition-all duration-200 hover:bg-[var(--color-gold-500)]/20 hover:scale-[1.04] ${isActive ? 'ring-4 ring-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.95)] scale-110 z-50 animate-pulse' : ''}`}
+      title="Activate Skill"
+      aria-label="Activate Skill"
+    >
+      <img src={skillIcon} alt="" className="block h-[70px] w-[70px] object-contain drop-shadow-[0_3px_6px_rgba(0,0,0,0.45)] select-none pointer-events-none" draggable="false" />
+    </button>
   )
 }
 

@@ -333,6 +333,12 @@ export function GameProvider({ children }) {
     }, 'effect', { i: instanceId, z: zone })
   }, [updateBoardState])
 
+  const activateSkill = useCallback(() => {
+    updateBoardState(prev => {
+      return prev
+    }, 'skill', {})
+  }, [updateBoardState])
+
   const removeToken = useCallback((instanceId, zone) => {
     updateBoardState(prev => {
       if (['hand', 'gy', 'banish', 'free', 'deck', 'extra'].includes(zone)) {
@@ -404,6 +410,7 @@ export function GameProvider({ children }) {
     generateToken,
     removeToken,
     activateEffect,
+    activateSkill,
     resetBoard,
     resetCombo,
     startRecording,
