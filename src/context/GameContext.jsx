@@ -336,6 +336,13 @@ export function GameProvider({ children }) {
     }
   }, [history])
 
+  const resetCombo = useCallback(() => {
+    setCombo([])
+    setHistory(prev => prev.length > 0 ? [prev[0]] : [createEmptyBoard()])
+    setHistoryIndex(0)
+    setRecording(false)
+  }, [])
+
   const value = {
     board,
     recording,
@@ -357,6 +364,7 @@ export function GameProvider({ children }) {
     removeToken,
     activateEffect,
     resetBoard,
+    resetCombo,
     startRecording,
     stopRecording,
     jumpToStep,

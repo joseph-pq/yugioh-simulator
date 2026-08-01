@@ -90,7 +90,12 @@ export function readStateFromUrl() {
  */
 export function generateShareUrl(state) {
   const compressed = encodeState(state);
-  return `${window.location.origin}${window.location.pathname}#d=${compressed}`;
+  const origin = window.location.origin;
+  let pathname = window.location.pathname;
+  if (!pathname.endsWith('/sim') && !pathname.endsWith('/sim/')) {
+    pathname = pathname.replace(/\/$/, '') + '/sim';
+  }
+  return `${origin}${pathname}#d=${compressed}`;
 }
 
 /**

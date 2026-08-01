@@ -42,6 +42,16 @@ export function getCardImageUrl(cardId, size = 'small') {
  * @returns {Promise<Object>} Card data
  */
 export async function fetchCardById(id) {
+  if (id === 99999999) {
+    return {
+      id: 99999999,
+      name: 'Monster Token',
+      type: 'Token',
+      humanType: 'Token Monster',
+      frameType: 'token',
+      desc: 'Monster Token',
+    };
+  }
   const res = await fetch(`${API_BASE}?id=${id}`);
   if (!res.ok) throw new Error(`Failed to fetch card ${id}: ${res.status}`);
   const data = await res.json();
@@ -55,21 +65,28 @@ export async function fetchCardById(id) {
  * @returns {Promise<Object[]>} Array of card data
  */
 export async function fetchCardsByIds(ids) {
-  if (ids.length === 0) return [];
+  if (!ids || ids.length === 0) return [];
 
-  // Deduplicate IDs for the API call
-  const uniqueIds = [...new Set(ids)];
+  // Filter out Token ID 99999999 and invalid IDs
+  const validIds = [...new Set(ids)].filter(id => id && id !== 99999999 && typeof id === 'number');
+  if (validIds.length === 0) return [];
 
-  // API may have URL length limits, so batch in groups of 50
   const batchSize = 50;
   const results = [];
 
-  for (let i = 0; i < uniqueIds.length; i += batchSize) {
-    const batch = uniqueIds.slice(i, i + batchSize);
-    const res = await fetch(`${API_BASE}?id=${batch.join(',')}`);
-    if (!res.ok) throw new Error(`Failed to fetch cards: ${res.status}`);
-    const data = await res.json();
-    results.push(...data.data);
+  for (let i = 0; i < validIds.length; i += batchSize) {
+    const batch = validIds.slice(i, i + batchSize);
+    try {
+      const res = await fetch(`${API_BASE}?id=${batch.join(',')}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.data) {
+          results.push(...data.data);
+        }
+      }
+    } catch {
+      // Ignore network errors for single batch; continue with valid results
+    }
   }
 
   return results;
@@ -77,17 +94,6 @@ export async function fetchCardsByIds(ids) {
 
 /**
  * Search cards with fuzzy name matching and optional filters.
- * @param {Object} params - Search parameters
- * @param {string} [params.fname] - Fuzzy name search
- * @param {string} [params.type] - Card type filter
- * @param {string} [params.race] - Race/spell type filter
- * @param {string} [params.attribute] - Attribute filter
- * @param {number} [params.level] - Level filter
- * @param {string} [params.archetype] - Archetype filter
- * @param {string} [params.format] - Format filter (default: 'duel links')
- * @param {number} [params.num] - Max results (default: 30)
- * @param {number} [params.offset] - Pagination offset
- * @returns {Promise<{data: Object[], meta: Object}>}
  */
 export async function searchCards(params = {}) {
   const {
@@ -123,11 +129,6 @@ export async function searchCards(params = {}) {
 
 /**
  * Fetch ALL Duel Links format cards for bulk caching.
- * Returns a minimal card object for each card to save storage.
- * 
- * Total cards: ~8,200 (as of 2026)
- * @param {function} [onProgress] - Progress callback(fetched, total)
- * @returns {Promise<Object[]>} All card data
  */
 export async function fetchAllDuelLinksCards(onProgress) {
   const pageSize = 500;
@@ -151,7 +152,6 @@ export async function fetchAllDuelLinksCards(onProgress) {
     if (onProgress) onProgress(allCards.length, total);
     if (allCards.length >= total) break;
 
-    // Small delay to stay within rate limits
     await new Promise(r => setTimeout(r, 100));
   }
 
@@ -160,9 +160,9 @@ export async function fetchAllDuelLinksCards(onProgress) {
 
 /**
  * Normalize a raw API card object into a compact format for storage.
- * Keeps only the fields we need to minimize IndexedDB size.
  */
 export function normalizeCard(raw) {
+  if (!raw) return null;
   return {
     id: raw.id,
     name: raw.name,
@@ -176,6 +176,5 @@ export function normalizeCard(raw) {
     level: raw.level ?? raw.linkval ?? null,
     attribute: raw.attribute ?? null,
     archetype: raw.archetype ?? null,
-    // Image URL derived from ID, no need to store
   };
 }

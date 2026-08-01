@@ -41,10 +41,22 @@ export default function SimulatorPage() {
             // Fetch card data for all unique IDs in state
             const allIds = [...(state.main || []), ...(state.extra || [])]
             const cards = await fetchAndCacheCards(allIds)
-            const map = cards.reduce((acc, c) => {
-              if (c) acc[c.id] = c
-              return acc
-            }, {})
+            const map = {
+              99999999: {
+                id: 99999999,
+                name: 'Monster Token',
+                type: 'Token',
+                humanType: 'Token Monster',
+                frameType: 'token',
+                desc: 'Monster Token',
+              }
+            }
+            cards.forEach(c => {
+              if (c) {
+                map[c.id] = c
+                map[String(c.id)] = c
+              }
+            })
 
             game.initBoard(state.main || [], state.extra || [], map)
 
@@ -131,6 +143,7 @@ export default function SimulatorPage() {
         }
       } catch (err) {
         showToast(`Failed to load state: ${err.message}`, 'error')
+        game.initBoard([], [], {})
       } finally {
         setLoading(false)
       }
@@ -399,6 +412,7 @@ export default function SimulatorPage() {
             combo={game.combo}
             currentIndex={game.playbackIndex}
             onJumpTo={game.jumpToStep}
+            onResetRecord={game.resetCombo}
           />
         </div>
       </div>
