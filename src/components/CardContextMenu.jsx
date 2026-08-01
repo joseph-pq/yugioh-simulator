@@ -37,7 +37,13 @@ export default function CardContextMenu({ x, y, card, zone, onAction, onClose })
 
   const pos = card.position
 
-  const actions = []
+  const isToken = card.cardId === 99999999 || card.data?.type === 'Token'
+
+  const actions = [
+    { label: 'Activate Effect', icon: '⚡', action: 'activate_effect' },
+    ...(isToken ? [{ label: 'Remove Token', icon: '🗑️', action: 'remove_token' }] : []),
+    { sep: true }
+  ]
 
   if (isHand || isDeck || isFree) {
     actions.push({ label: 'Normal Summon (ATK)', icon: '⚔️', action: 'summon_atk' })

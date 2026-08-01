@@ -1,153 +1,133 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { useDeck } from '../context/DeckContext'
-import { useGame, POSITION } from '../context/GameContext'
-import { useCacheContext } from '../context/CacheContext'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useLocation } from 'react-router'
+import { useGame } from '../context/GameContext'
 import { readStateFromUrl, pushStateToUrl, generateShareUrl } from '../services/urlState'
+import { fetchAndCacheCards } from '../services/cardCache'
 import { readYDKFile } from '../utils/ydkParser'
 import DuelBoard from '../components/DuelBoard'
-import ComboStepList from '../components/ComboStepList'
 import CardDetailPanel from '../components/CardDetailPanel'
+import ComboStepList from '../components/ComboStepList'
 
 export default function SimulatorPage() {
-  const { mainDeck, extraDeck, deckName } = useDeck()
-  const { fetchAndCacheCards } = useCacheContext()
   const game = useGame()
-
-  const [loading, setLoading] = useState(true)
+  const location = useLocation()
   const [selectedCard, setSelectedCard] = useState(null)
-  const [toast, setToast] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
+  const [toast, setToast] = useState(null)
+  const [deckName, setDeckName] = useState('')
+  const [mainDeck, setMainDeck] = useState([])
+  const [extraDeck, setExtraDeck] = useState([])
   const fileInputRef = useRef(null)
 
-  const showToast = (msg, type = 'success') => {
+  const showToast = useCallback((msg, type = 'info') => {
     setToast({ msg, type })
-    setTimeout(() => setToast(null), 2500)
-  }
+    setTimeout(() => setToast(null), 3000)
+  }, [])
 
-  // Load state from URL or fallback to DeckContext
+  // Parse state from URL hash on load
   useEffect(() => {
     async function loadInitial() {
       try {
         setLoading(true)
-        const urlState = readStateFromUrl()
+        const hash = window.location.hash
+        if (hash && hash.length > 2) {
+          const state = readStateFromUrl()
+          if (state) {
+            setDeckName(state.name || '')
+            setMainDeck(state.main || [])
+            setExtraDeck(state.extra || [])
 
-        if (urlState && urlState.main.length > 0) {
-          // Resolve cards from URL
-          const allIds = [...urlState.main, ...urlState.extra]
-          const cards = await fetchAndCacheCards(allIds)
-          const map = cards.reduce((acc, c) => {
-            if (c) acc[c.id] = c
-            return acc
-          }, {})
+            // Fetch card data for all unique IDs in state
+            const allIds = [...(state.main || []), ...(state.extra || [])]
+            const cards = await fetchAndCacheCards(allIds)
+            const map = cards.reduce((acc, c) => {
+              if (c) acc[c.id] = c
+              return acc
+            }, {})
 
-          // Initialize board
-          game.initBoard(urlState.main, urlState.extra, map)
+            game.initBoard(state.main || [], state.extra || [], map)
 
-          // Restore recorded combo if any
-          if (urlState.combo && urlState.combo.length > 0) {
-            game.setCombo(urlState.combo)
+            // Reconstruct history if combo steps are present
+            if (state.combo && state.combo.length > 0) {
+              const fullHistory = [JSON.parse(JSON.stringify(game.board))]
+              let currentBoard = JSON.parse(JSON.stringify(game.board))
 
-            // Rebuild history states sequentially from the combo actions
-            let currentBoard = JSON.parse(JSON.stringify(game.board))
-            const newHistory = [JSON.parse(JSON.stringify(currentBoard))]
+              state.combo.forEach(step => {
+                const next = JSON.parse(JSON.stringify(currentBoard))
+                const action = step.a
+                const fromZone = step.from || step.f
+                const toZone = step.to || step.t
+                const instanceId = step.instanceId || step.i
+                const position = step.position || step.p
+                const val = step.val !== undefined ? step.val : step.v
+                const targetZone = step.to || step.z
 
-            // Function to mimic game logic to rebuild state history
-            for (const step of urlState.combo) {
-              const prev = JSON.parse(JSON.stringify(currentBoard))
-              if (step.a === 'draw') {
-                const n = Math.min(step.n || 1, prev.deck.length)
-                const drawn = prev.deck.slice(0, n)
-                prev.deck = prev.deck.slice(n)
-                prev.hand = [...prev.hand, ...drawn]
-              } else if (step.a === 'shuffle') {
-                // shuffle (just mimic shuffle array)
-                const a = [...prev.deck]
-                for (let i = a.length - 1; i > 0; i--) {
-                  const j = Math.floor(Math.random() * (i + 1));
-                  [a[i], a[j]] = [a[j], a[i]]
-                }
-                prev.deck = a
-              } else if (step.a === 'move') {
-                let card = null
-                const fromZone = step.f
-                const toZone = step.to
-                const instanceId = step.i
-                const position = step.p
-
-                if (['hand', 'gy', 'banish', 'extra', 'deck', 'free'].includes(fromZone)) {
-                  const arr = prev[fromZone]
-                  const idx = arr.findIndex(c => c.id === instanceId)
-                  if (idx !== -1) {
-                    card = arr[idx]
-                    arr.splice(idx, 1)
-                  }
-                } else {
-                  card = prev[fromZone]
-                  if (card && card.id === instanceId) prev[fromZone] = null
-                  else card = null
-                }
-
-                if (card) {
-                  if (['hand', 'gy', 'banish', 'extra', 'deck', 'free'].includes(toZone)) {
-                    prev[toZone].push(card)
-                  } else {
-                    if (prev[toZone] !== null) {
-                      prev.hand.push(prev[toZone])
+                if (action === 'move' && instanceId && fromZone && toZone) {
+                  let card = null
+                  if (['hand', 'gy', 'banish', 'deck', 'extra', 'free'].includes(fromZone)) {
+                    const idx = next[fromZone].findIndex(c => c.id === instanceId)
+                    if (idx !== -1) {
+                      card = next[fromZone][idx]
+                      next[fromZone].splice(idx, 1)
                     }
-                    prev[toZone] = { ...card, position: position || POSITION.FACE_UP_ATK }
+                  } else {
+                    card = next[fromZone]
+                    if (card && card.id === instanceId) next[fromZone] = null
+                  }
+
+                  if (card) {
+                    if (position) card.position = position
+                    if (['hand', 'gy', 'banish', 'deck', 'extra', 'free'].includes(toZone)) {
+                      next[toZone].push(card)
+                    } else {
+                      next[toZone] = card
+                    }
+                  }
+                } else if (action === 'pos' && targetZone && position) {
+                  if (next[targetZone]) next[targetZone].position = position
+                } else if (action === 'lp' && val !== undefined) {
+                  next.lp = val
+                } else if (action === 'token') {
+                  const tokenInstance = {
+                    id: Date.now() + Math.random(),
+                    cardId: 99999999,
+                    position: 'face_up_atk',
+                    data: {
+                      id: 99999999,
+                      name: 'Monster Token',
+                      type: 'Token',
+                      humanType: 'Token Monster',
+                      frameType: 'token',
+                      desc: 'Monster Token',
+                    }
+                  }
+                  if (['hand', 'gy', 'banish', 'free', 'deck'].includes(targetZone || 'hand')) {
+                    next[targetZone || 'hand'].push(tokenInstance)
+                  } else if (next[targetZone] === null) {
+                    next[targetZone] = tokenInstance
+                  }
+                } else if (action === 'removetoken') {
+                  if (['hand', 'gy', 'banish', 'free', 'deck'].includes(targetZone)) {
+                    next[targetZone] = next[targetZone].filter(c => c.id !== instanceId)
+                  } else if (next[targetZone]?.id === instanceId) {
+                    next[targetZone] = null
                   }
                 }
-              } else if (step.a === 'pos') {
-                if (prev[step.z]) prev[step.z].position = step.p
-              } else if (step.a === 'lp') {
-                prev.lp = Math.max(0, step.v)
-              } else if (step.a === 'mill') {
-                const n = Math.min(step.n || 1, prev.deck.length)
-                const milled = prev.deck.slice(0, n)
-                prev.deck = prev.deck.slice(n)
-                prev.gy = [...prev.gy, ...milled]
-              } else if (step.a === 'todeck') {
-                let card = null
-                const fromZone = step.f
-                const instanceId = step.i
-                const toTop = step.top
+                fullHistory.push(next)
+                currentBoard = next
+              })
 
-                if (['hand', 'gy', 'banish', 'extra', 'free'].includes(fromZone)) {
-                  const arr = prev[fromZone]
-                  const idx = arr.findIndex(c => c.id === instanceId)
-                  if (idx !== -1) {
-                    card = arr[idx]
-                    arr.splice(idx, 1)
-                  }
-                } else {
-                  card = prev[fromZone]
-                  if (card && card.id === instanceId) prev[fromZone] = null
-                }
-
-                if (card) {
-                  if (toTop) prev.deck.unshift(card)
-                  else prev.deck.push(card)
-                }
-              }
-              currentBoard = prev
-              newHistory.push(JSON.parse(JSON.stringify(currentBoard)))
+              game.setCombo(state.combo)
+              game.setHistory(fullHistory)
+              game.setHistoryIndex(fullHistory.length - 1)
             }
 
-            game.setHistory(newHistory)
-            game.setHistoryIndex(newHistory.length - 1)
+            showToast('Loaded shared combo state!', 'success')
           }
-
-          showToast('Loaded shared combo state!', 'success')
-        } else if (mainDeck.length > 0) {
-          // Resolve cards from local deck context
-          const allIds = [...mainDeck, ...extraDeck]
-          const cards = await fetchAndCacheCards(allIds)
-          const map = cards.reduce((acc, c) => {
-            if (c) acc[c.id] = c
-            return acc
-          }, {})
-
-          game.initBoard(mainDeck, extraDeck, map)
+        } else {
+          // Default empty board
+          game.initBoard(mainDeck, extraDeck, {})
         }
       } catch (err) {
         showToast(`Failed to load state: ${err.message}`, 'error')
@@ -192,11 +172,9 @@ export default function SimulatorPage() {
 
   // Share URL state
   const handleShare = useCallback(() => {
-    // Get unique card IDs from current game board setup to construct the deck list
     const mainIds = []
     const extraIds = []
 
-    // Collect all card instances from zones
     const collectIds = (zone) => {
       const item = game.board[zone]
       if (item) {
@@ -211,12 +189,12 @@ export default function SimulatorPage() {
       }
     }
 
-    // Scan all zones to get current main & extra lists
     collectIds('hand')
     collectIds('gy')
     collectIds('banish')
     collectIds('deck')
     collectIds('extra')
+    collectIds('free')
     collectIds('m1'); collectIds('m2'); collectIds('m3')
     collectIds('st1'); collectIds('st2'); collectIds('st3')
     collectIds('field')
@@ -246,7 +224,7 @@ export default function SimulatorPage() {
   }
 
   // If no deck is loaded anywhere
-  const hasDeck = game.board.deck.length > 0 || game.board.hand.length > 0 || game.board.extra.length > 0 || game.board.gy.length > 0 || game.board.banish.length > 0 || game.board.m1 || game.board.m2 || game.board.m3 || game.board.st1 || game.board.st2 || game.board.st3 || game.board.field
+  const hasDeck = game.board.deck.length > 0 || game.board.hand.length > 0 || game.board.extra.length > 0 || game.board.gy.length > 0 || game.board.banish.length > 0 || game.board.free.length > 0 || game.board.m1 || game.board.m2 || game.board.m3 || game.board.st1 || game.board.st2 || game.board.st3 || game.board.field
 
   if (!hasDeck) {
     return (
@@ -281,92 +259,147 @@ export default function SimulatorPage() {
 
   return (
     <div className="flex h-[calc(100dvh-56px)] overflow-hidden">
-      {/* Left side: Interactive Board */}
-      <div className="flex-1 bg-[var(--color-bg-primary)] relative border-r border-[var(--color-border)]">
-        <DuelBoard onSelectCard={setSelectedCard} />
-      </div>
-
-      {/* Right side panel: Combo Recording & Card Details */}
-      <div className="w-80 flex-shrink-0 flex flex-col bg-[var(--color-bg-secondary)] overflow-hidden">
-        {/* Combo panel (Top 50%) */}
-        <div className="h-1/2 border-b border-[var(--color-border)] flex flex-col overflow-hidden">
-          {/* Recorder Controls */}
-          <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[var(--color-text-secondary)]">COMBO RECORDER</span>
-              {game.recording && (
-                <span className="flex items-center gap-1.5 text-[10px] text-[var(--color-accent-rose)] font-bold animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent-rose)]" />
-                  REC
-                </span>
-              )}
-            </div>
-
+      {/* Left Column: Card Details & Game Stats Panel */}
+      <div className="w-80 flex-shrink-0 flex flex-col bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] overflow-hidden">
+        {/* LP & Game Stats Column */}
+        <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex flex-col gap-2.5">
+          {/* LP Counter Row */}
+          <div className="flex items-center justify-between bg-[var(--color-bg-primary)] p-2 rounded-lg border border-[var(--color-border)] shadow-inner">
+            <span className="text-xs font-bold text-[var(--color-gold-400)] uppercase tracking-wider">Life Points</span>
             <div className="flex items-center gap-1.5">
-              {!game.recording ? (
-                <button
-                  onClick={game.startRecording}
-                  className="flex-1 py-1.5 rounded bg-[var(--color-accent-rose)] text-white font-semibold text-xs transition-colors hover:bg-[var(--color-accent-rose)]/80"
-                >
-                  🔴 Record
-                </button>
-              ) : (
-                <button
-                  onClick={game.stopRecording}
-                  className="flex-1 py-1.5 rounded bg-[var(--color-text-secondary)] text-[var(--color-bg-primary)] font-semibold text-xs transition-colors hover:bg-[var(--color-text-primary)]"
-                >
-                  ⏹ Stop
-                </button>
-              )}
-
               <button
-                onClick={handleShare}
-                disabled={game.combo.length === 0}
-                className="py-1.5 px-3 rounded bg-[var(--color-gold-500)] text-[var(--color-bg-primary)] font-semibold text-xs transition-colors hover:bg-[var(--color-gold-400)] disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => game.setLP(prev => Math.max(0, prev - 500))}
+                className="w-6 h-6 rounded bg-[var(--color-bg-tertiary)] hover:bg-red-950 text-red-400 border border-red-800/40 text-xs font-bold transition-colors flex items-center justify-center"
+                title="-500 LP"
               >
-                🔗 Share
+                -
               </button>
-            </div>
-
-            {/* Playback navigation */}
-            <div className="flex items-center justify-between gap-1 mt-1">
+              <span className="text-sm font-mono font-extrabold text-yellow-400 px-1 min-w-[50px] text-center">
+                {game.board.lp}
+              </span>
               <button
-                onClick={() => game.jumpToStep(-1)}
-                disabled={game.playbackIndex === -1}
-                className="flex-1 py-1 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[10px] font-medium disabled:opacity-30 transition-colors"
+                onClick={() => game.setLP(prev => prev + 500)}
+                className="w-6 h-6 rounded bg-[var(--color-bg-tertiary)] hover:bg-emerald-950 text-emerald-400 border border-emerald-800/40 text-xs font-bold transition-colors flex items-center justify-center"
+                title="+500 LP"
               >
-                ⏮ Start
-              </button>
-              <button
-                onClick={() => game.jumpToStep(game.playbackIndex - 1)}
-                disabled={game.playbackIndex <= -1}
-                className="flex-1 py-1 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[10px] font-medium disabled:opacity-30 transition-colors"
-              >
-                ◀ Prev
-              </button>
-              <button
-                onClick={() => game.jumpToStep(game.playbackIndex + 1)}
-                disabled={game.playbackIndex >= game.maxPlaybackIndex}
-                className="flex-1 py-1 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[10px] font-medium disabled:opacity-30 transition-colors"
-              >
-                Next ▶
+                +
               </button>
             </div>
           </div>
 
-          {/* Steps List */}
-          <div className="flex-1 overflow-hidden">
-            <ComboStepList
-              combo={game.combo}
-              currentIndex={game.playbackIndex}
-              onJumpTo={game.jumpToStep}
-            />
+          {/* Zone Stats Grid Column */}
+          <div className="grid grid-cols-4 gap-1 text-center py-1.5 bg-[var(--color-bg-primary)]/60 rounded-lg border border-[var(--color-border)]/50 text-[10px]">
+            <div>
+              <div className="text-[var(--color-text-muted)] font-medium">Deck</div>
+              <div className="font-bold text-[var(--color-text-primary)] text-xs">{game.board.deck.length}</div>
+            </div>
+            <div>
+              <div className="text-[var(--color-text-muted)] font-medium">Extra</div>
+              <div className="font-bold text-[var(--color-accent-purple)] text-xs">{game.board.extra.length}</div>
+            </div>
+            <div>
+              <div className="text-[var(--color-text-muted)] font-medium">GY</div>
+              <div className="font-bold text-[var(--color-accent-rose)] text-xs">{game.board.gy.length}</div>
+            </div>
+            <div>
+              <div className="text-[var(--color-text-muted)] font-medium">Banish</div>
+              <div className="font-bold text-[var(--color-accent-blue)] text-xs">{game.board.banish.length}</div>
+            </div>
+          </div>
+
+          {/* Token Generation Button */}
+          <button
+            onClick={() => game.generateToken('hand')}
+            className="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow active:scale-95 flex items-center justify-center gap-1.5"
+          >
+            <span>✨</span> Spawn Monster Token
+          </button>
+        </div>
+
+        {/* Card Details Panel */}
+        <div className="flex-1 overflow-y-auto relative">
+          <CardDetailPanel card={selectedCard} onClose={selectedCard ? () => setSelectedCard(null) : undefined} />
+        </div>
+      </div>
+
+      {/* Center Column: Interactive Duel Board */}
+      <div className="flex-1 bg-[var(--color-bg-primary)] relative overflow-hidden border-r border-[var(--color-border)]">
+        <DuelBoard onSelectCard={setSelectedCard} onHoverCard={setSelectedCard} />
+      </div>
+
+      {/* Right Column: Combo Recorder & Steps List */}
+      <div className="w-80 flex-shrink-0 flex flex-col bg-[var(--color-bg-secondary)] overflow-hidden">
+        {/* Recorder Controls */}
+        <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--color-text-secondary)]">COMBO RECORDER</span>
+            {game.recording && (
+              <span className="flex items-center gap-1.5 text-[10px] text-[var(--color-accent-rose)] font-bold animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent-rose)]" />
+                REC
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {!game.recording ? (
+              <button
+                onClick={game.startRecording}
+                className="flex-1 py-1.5 rounded bg-[var(--color-accent-rose)] text-white font-semibold text-xs transition-colors hover:bg-[var(--color-accent-rose)]/80"
+              >
+                🔴 Record
+              </button>
+            ) : (
+              <button
+                onClick={game.stopRecording}
+                className="flex-1 py-1.5 rounded bg-[var(--color-text-secondary)] text-[var(--color-bg-primary)] font-semibold text-xs transition-colors hover:bg-[var(--color-text-primary)]"
+              >
+                ⏹ Stop
+              </button>
+            )}
+
+            <button
+              onClick={handleShare}
+              disabled={game.combo.length === 0}
+              className="py-1.5 px-3 rounded bg-[var(--color-gold-500)] text-[var(--color-bg-primary)] font-semibold text-xs transition-colors hover:bg-[var(--color-gold-400)] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              🔗 Share
+            </button>
+          </div>
+
+          {/* Playback navigation */}
+          <div className="flex items-center justify-between gap-1 mt-1">
+            <button
+              onClick={() => game.jumpToStep(-1)}
+              disabled={game.playbackIndex === -1}
+              className="flex-1 py-1 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[10px] font-medium disabled:opacity-30 transition-colors"
+            >
+              ⏮ Start
+            </button>
+            <button
+              onClick={() => game.jumpToStep(game.playbackIndex - 1)}
+              disabled={game.playbackIndex <= -1}
+              className="flex-1 py-1 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[10px] font-medium disabled:opacity-30 transition-colors"
+            >
+              ◀ Prev
+            </button>
+            <button
+              onClick={() => game.jumpToStep(game.playbackIndex + 1)}
+              disabled={game.playbackIndex >= game.maxPlaybackIndex}
+              className="flex-1 py-1 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[10px] font-medium disabled:opacity-30 transition-colors"
+            >
+              Next ▶
+            </button>
           </div>
         </div>
 
-        {/* Card Details panel (Bottom 50%) */}
-        <div className="h-1/2 overflow-y-auto relative">
-          <CardDetailPanel card={selectedCard} onClose={selectedCard ? () => setSelectedCard(null) : undefined} />
+        {/* Steps List */}
+        <div className="flex-1 overflow-hidden">
+          <ComboStepList
+            combo={game.combo}
+            currentIndex={game.playbackIndex}
+            onJumpTo={game.jumpToStep}
+          />
         </div>
       </div>
 

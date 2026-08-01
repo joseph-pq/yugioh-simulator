@@ -1,21 +1,37 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { useGame, ZONES, POSITION, MONSTER_ZONES, SPELL_ZONES } from '../context/GameContext'
 import { getCardImageUrl } from '../services/ygoproApi'
 import CardContextMenu from './CardContextMenu'
 
 /**
- * Main Duel Board — the VRAINS / Duel Links board layout.
+ * Main Duel Board — Official Duel Links 5-Column Field Grid.
+ * Displays vertical stacked cards for Grave and Banish piles with space between stacked cards.
+ * Animates card movement during combo playback.
  */
-export default function DuelBoard({ onSelectCard }) {
+export default function DuelBoard({ onSelectCard, onHoverCard }) {
   const game = useGame()
   const { board } = game
   const [contextMenu, setContextMenu] = useState(null)
   const [activeCard, setActiveCard] = useState(null)
+  const [highlightedCardId, setHighlightedCardId] = useState(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
+
+  // Highlight active step's card when playbackIndex changes during record playback
+  useEffect(() => {
+    if (game.playbackIndex >= 0 && game.combo[game.playbackIndex]) {
+      const step = game.combo[game.playbackIndex]
+      const cardId = step.i || step.instanceId
+      if (cardId) {
+        setHighlightedCardId(cardId)
+        const timer = setTimeout(() => setHighlightedCardId(null), 1000)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [game.playbackIndex, game.combo])
 
   const handleDragStart = useCallback((event) => {
     const { active } = event
@@ -32,7 +48,6 @@ export default function DuelBoard({ onSelectCard }) {
 
     if (fromZone === toZone) return
 
-    // Determine position based on target zone
     let position = POSITION.FACE_UP_ATK
     if (SPELL_ZONES.includes(toZone) || toZone === ZONES.FIELD || toZone === ZONES.EXTRA_PILE) {
       position = POSITION.FACE_UP
@@ -49,6 +64,14 @@ export default function DuelBoard({ onSelectCard }) {
   const handleContextAction = useCallback((action, card, zone) => {
     const id = card.id
     switch (action) {
+      case 'activate_effect':
+        game.activateEffect(id, zone)
+        setHighlightedCardId(id)
+        setTimeout(() => setHighlightedCardId(null), 1200)
+        break
+      case 'remove_token':
+        game.removeToken(id, zone)
+        break
       case 'summon_atk':
       case 'ss_atk': {
         const target = MONSTER_ZONES.find(z => !board[z])
@@ -114,110 +137,72 @@ export default function DuelBoard({ onSelectCard }) {
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex flex-col h-full select-none justify-between">
-        {/* Top Bar — LP & Deck info */}
-        <div className="px-4 py-2 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-[var(--color-text-muted)]">
-              Deck: <span className="text-[var(--color-text-primary)] font-semibold">{board.deck.length}</span>
-            </span>
-            <span className="text-xs text-[var(--color-text-muted)]">
-              Extra: <span className="text-[var(--color-accent-purple)] font-semibold">{board.extra.length}</span>
-            </span>
-          </div>
-          <LPCounter lp={board.lp} onChange={game.setLP} />
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-[var(--color-text-muted)]">
-              GY: <span className="text-[var(--color-accent-rose)] font-semibold">{board.gy.length}</span>
-            </span>
-            <span className="text-xs text-[var(--color-text-muted)]">
-              Banish: <span className="text-[var(--color-accent-blue)] font-semibold">{board.banish.length}</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Board grid (Exactly matches user screenshot) */}
-        <div className="flex-1 flex items-center justify-center p-3">
-          <div className="grid grid-cols-7 gap-3 items-center justify-center w-full max-w-3xl">
-            {/* Column 1: Free Zone (Spans 3 Rows) */}
-            <div className="row-span-3 flex items-center justify-center h-full">
-              <TallPileZone zone={ZONES.FREE} cards={board.free} label="Free" color="var(--color-text-muted)" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
+      <div className="flex flex-col h-full select-none justify-between overflow-hidden">
+        {/* Duel Links Official 5-Column Field Grid */}
+        <div className="flex-1 flex items-center justify-center p-2 min-h-0">
+          <div className="grid grid-cols-5 gap-3 items-center justify-center w-full max-w-2xl">
+            
+            {/* Row 1: Top Extra & Utility Zones */}
+            <div className="col-span-5 flex justify-center gap-6 py-0.5">
+              <PileZone zone={ZONES.FREE} cards={board.free} label="FREE" color="var(--color-text-muted)" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              <BoardZone zone={ZONES.EMZ1} card={board.emz1} label="EMZ" outlineColor="border-purple-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              <BoardZone zone={ZONES.EMZ2} card={board.emz2} label="EMZ" outlineColor="border-purple-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
             </div>
 
-            {/* Column 2: Field / Extra Pile (Spans 3 Rows) */}
-            <div className="row-span-3 flex flex-col justify-between h-full min-h-[300px] items-center py-1">
-              <BoardZone zone={ZONES.FIELD} card={board.field} label="FIELD" outlineColor="border-yellow-600/50" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
-              <BoardZone zone={ZONES.EXTRA_PILE} card={board.extra_pile} label="EXTRA" outlineColor="border-slate-600/50" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
-            </div>
+            {/* Row 2: Field (Left) | Monster Zones (Center 3) | Vertical Stacked Grave (Right) */}
+            <BoardZone zone={ZONES.FIELD} card={board.field} label="FIELD" outlineColor="border-yellow-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            <BoardZone zone={ZONES.M1} card={board.m1} label="M1" outlineColor="border-blue-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            <BoardZone zone={ZONES.M2} card={board.m2} label="M2" outlineColor="border-blue-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            <BoardZone zone={ZONES.M3} card={board.m3} label="M3" outlineColor="border-blue-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            
+            {/* Vertical Rectangle Stacked Grave */}
+            <VerticalStackPileZone zone={ZONES.GY} cards={board.gy} label="GRAVE" color="var(--color-accent-rose)" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
 
-            {/* Column 3, 4, 5: EMZ / Monsters / Spells & Traps */}
-            {/* Row 1: Extra Monster Zones */}
-            <div className="col-span-3 flex justify-center gap-12 py-1">
-              <BoardZone zone={ZONES.EMZ1} card={board.emz1} label="EMZ" outlineColor="border-purple-600/50" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
-              <BoardZone zone={ZONES.EMZ2} card={board.emz2} label="EMZ" outlineColor="border-purple-600/50" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
-            </div>
+            {/* Row 3: Extra Pile (Left) | Spell/Trap Zones (Center 3) | Vertical Stacked Banish (Right) */}
+            <BoardZone zone={ZONES.EXTRA_PILE} card={board.extra_pile} label="EXTRA" outlineColor="border-slate-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            <BoardZone zone={ZONES.ST1} card={board.st1} label="S/T1" outlineColor="border-emerald-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            <BoardZone zone={ZONES.ST2} card={board.st2} label="S/T2" outlineColor="border-emerald-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            <BoardZone zone={ZONES.ST3} card={board.st3} label="S/T3" outlineColor="border-emerald-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            
+            {/* Vertical Rectangle Stacked Banish */}
+            <VerticalStackPileZone zone={ZONES.BANISH} cards={board.banish} label="BANISH" color="var(--color-accent-blue)" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
 
-            {/* Row 2: Monster Zones */}
-            <div className="col-span-3 grid grid-cols-3 gap-2 justify-items-center">
-              <BoardZone zone={ZONES.M1} card={board.m1} label="M" outlineColor="border-blue-600/50" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
-              <BoardZone zone={ZONES.M2} card={board.m2} label="M" outlineColor="border-blue-600/50" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
-              <BoardZone zone={ZONES.M3} card={board.m3} label="M" outlineColor="border-blue-600/50" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
-            </div>
-
-            {/* Row 3: Spell/Trap Zones */}
-            <div className="col-span-3 grid grid-cols-3 gap-2 justify-items-center">
-              <BoardZone zone={ZONES.ST1} card={board.st1} label="S/T" outlineColor="border-emerald-600/50" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
-              <BoardZone zone={ZONES.ST2} card={board.st2} label="S/T" outlineColor="border-emerald-600/50" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
-              <BoardZone zone={ZONES.ST3} card={board.st3} label="S/T" outlineColor="border-emerald-600/50" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
-            </div>
-
-            {/* Column 6: Grave Zone (Spans 3 Rows) */}
-            <div className="row-span-3 flex items-center justify-center h-full">
-              <TallPileZone zone={ZONES.GY} cards={board.gy} label="Grave" color="var(--color-accent-rose)" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
-            </div>
-
-            {/* Column 7: Banish Zone (Spans 3 Rows) */}
-            <div className="row-span-3 flex items-center justify-center h-full">
-              <TallPileZone zone={ZONES.BANISH} cards={board.banish} label="Banish" color="var(--color-accent-blue)" onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
-            </div>
           </div>
         </div>
 
-        {/* Hand & Extra Deck Pools side-by-side */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-4 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50">
-          <div className="col-span-1 border border-dashed border-[var(--color-accent-blue)]/30 rounded-xl bg-[var(--color-bg-primary)]/40 p-2">
-            <div className="text-[10px] font-bold text-[var(--color-accent-blue)] mb-1 uppercase tracking-wider">Hand ({board.hand.length})</div>
-            <HandZone cards={board.hand} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
+        {/* Hand & Extra Deck Pools */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 px-3 py-1.5 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50">
+          <div className="col-span-1 border border-dashed border-[var(--color-accent-blue)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5">
+            <div className="text-[10px] font-bold text-[var(--color-accent-blue)] mb-0.5 uppercase tracking-wider">Hand ({board.hand.length})</div>
+            <HandZone cards={board.hand} highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
           </div>
 
-          <div className="col-span-2 border border-dashed border-[var(--color-accent-purple)]/30 rounded-xl bg-[var(--color-bg-primary)]/40 p-2">
-            <div className="text-[10px] font-bold text-[var(--color-accent-purple)] mb-1 uppercase tracking-wider">Extra Deck ({board.extra.length})</div>
-            <ExtraDeckZone cards={board.extra} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
+          <div className="col-span-2 border border-dashed border-[var(--color-accent-purple)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5">
+            <div className="text-[10px] font-bold text-[var(--color-accent-purple)] mb-0.5 uppercase tracking-wider">Extra Deck ({board.extra.length})</div>
+            <ExtraDeckZone cards={board.extra} highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
           </div>
         </div>
 
-        {/* Main Deck visible at bottom */}
-        <div className="px-4 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50">
-          <div className="border border-dashed border-[var(--color-text-muted)]/30 rounded-xl bg-[var(--color-bg-primary)]/40 p-2">
-            <div className="text-[10px] font-bold text-[var(--color-text-muted)] mb-1.5 uppercase tracking-wider flex items-center justify-between">
-              <span>Deck ({board.deck.length})</span>
+        {/* Main Deck Pool */}
+        <div className="px-3 py-1.5 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50">
+          <div className="border border-dashed border-[var(--color-text-muted)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5">
+            <div className="text-[10px] font-bold text-[var(--color-text-muted)] mb-1 uppercase tracking-wider flex items-center justify-between">
+              <span>Main Deck ({board.deck.length})</span>
               <button onClick={game.shuffleDeck} className="px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[9px] hover:bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] border border-[var(--color-border)] transition-colors">
                 🔀 Shuffle Deck
               </button>
             </div>
-            <DeckZone cards={board.deck} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} />
+            <DeckZone cards={board.deck} highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
           </div>
         </div>
       </div>
 
-      {/* Drag overlay */}
       <DragOverlay>
         {activeCard?.data ? (
           <img src={getCardImageUrl(activeCard.data.id || activeCard.cardId, 'small')} alt="" className="card-thumbnail opacity-85 rotate-2 shadow-2xl" />
         ) : null}
       </DragOverlay>
 
-      {/* Context menu */}
       {contextMenu && (
         <CardContextMenu
           x={contextMenu.x}
@@ -232,9 +217,7 @@ export default function DuelBoard({ onSelectCard }) {
   )
 }
 
-// ==================== Sub-components ====================
-
-function BoardZone({ zone, card, label, outlineColor, onContextMenu, onSelectCard }) {
+function BoardZone({ zone, card, label, outlineColor, highlightedCardId, onContextMenu, onSelectCard, onHoverCard }) {
   const { setNodeRef, isOver } = useDroppable({ id: zone })
   const isFaceDown = card?.position === POSITION.FACE_DOWN_DEF || card?.position === POSITION.FACE_DOWN
   const isDefense = card?.position === POSITION.FACE_UP_DEF || card?.position === POSITION.FACE_DOWN_DEF
@@ -242,12 +225,21 @@ function BoardZone({ zone, card, label, outlineColor, onContextMenu, onSelectCar
   return (
     <div
       ref={setNodeRef}
-      className={`relative w-[68px] h-[92px] rounded-lg border-2 border-dashed flex items-center justify-center transition-all duration-200
+      className={`relative w-[64px] h-[86px] rounded-lg border-2 border-dashed flex items-center justify-center transition-all duration-200
         ${isOver ? 'border-[var(--color-gold-400)] bg-[var(--color-gold-500)]/10 scale-105' : `${outlineColor || 'border-[var(--color-border)]'} bg-[var(--color-bg-tertiary)]/50`}
         ${card ? 'border-solid' : ''}`}
     >
       {card ? (
-        <DraggableCard card={card} zone={zone} isFaceDown={isFaceDown} isDefense={isDefense} onContextMenu={onContextMenu} onClick={() => onSelectCard?.(card.data)} />
+        <DraggableCard
+          card={card}
+          zone={zone}
+          isFaceDown={isFaceDown}
+          isDefense={isDefense}
+          isHighlighted={card.id === highlightedCardId}
+          onContextMenu={onContextMenu}
+          onClick={() => onSelectCard?.(card.data)}
+          onMouseEnter={() => onHoverCard?.(card.data)}
+        />
       ) : (
         <span className="text-[9px] text-[var(--color-text-muted)] font-bold font-sans uppercase tracking-wider">{label}</span>
       )}
@@ -255,53 +247,105 @@ function BoardZone({ zone, card, label, outlineColor, onContextMenu, onSelectCar
   )
 }
 
-function TallPileZone({ zone, cards, label, color, onContextMenu, onSelectCard }) {
+function VerticalStackPileZone({ zone, cards, label, color, highlightedCardId, onContextMenu, onSelectCard, onHoverCard }) {
   const { setNodeRef, isOver } = useDroppable({ id: zone })
 
   return (
     <div
       ref={setNodeRef}
-      className={`relative w-[76px] h-[216px] rounded-lg border-2 border-dashed flex flex-col items-center justify-between p-1.5 transition-all duration-200
-        ${isOver ? 'border-[var(--color-gold-400)] bg-[var(--color-gold-500)]/10 scale-105' : `border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/30`}`}
+      className={`relative w-[70px] min-h-[90px] max-h-[160px] rounded-lg border-2 border-dashed flex flex-col p-1 overflow-y-auto transition-all duration-200 shadow-inner ${
+        isOver
+          ? 'border-[var(--color-gold-400)] bg-[var(--color-gold-500)]/15 scale-105 z-30'
+          : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/40'
+      }`}
       style={{ borderColor: isOver ? undefined : color }}
     >
-      <div className="flex-1 w-full overflow-y-auto flex flex-col gap-1 items-center justify-start py-0.5 scrollbar-thin">
-        {cards.map((card) => (
-          <DraggableCard
-            key={card.id}
-            card={card}
-            zone={zone}
-            onContextMenu={onContextMenu}
-            onClick={() => onSelectCard?.(card.data)}
-          />
-        ))}
+      {/* Zone Title Header */}
+      <div className="flex items-center justify-between mb-1 px-1 border-b border-[var(--color-border)]/50 pb-0.5 sticky top-0 bg-[var(--color-bg-secondary)]/90 z-20 rounded">
+        <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color }}>{label}</span>
+        <span className="text-[9px] font-mono font-extrabold text-[var(--color-text-primary)]">{cards.length}</span>
       </div>
-      <span className="text-[9px] font-bold uppercase tracking-wider text-center mt-1" style={{ color }}>
-        {label} ({cards.length})
-      </span>
+
+      {cards.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-[8px] text-[var(--color-text-muted)] font-mono py-4">
+          Empty
+        </div>
+      ) : (
+        /* Vertical Stack with Spacing between stacked cards */
+        <div className="relative flex flex-col gap-1 pb-1">
+          {cards.map((card) => (
+            <div key={card.id} className="relative flex flex-col items-center">
+              <DraggableCard
+                card={card}
+                zone={zone}
+                isHighlighted={card.id === highlightedCardId}
+                onContextMenu={onContextMenu}
+                onClick={() => onSelectCard?.(card.data)}
+                onMouseEnter={() => onHoverCard?.(card.data)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
-function HandZone({ cards, onContextMenu, onSelectCard }) {
+function PileZone({ zone, cards, label, color, highlightedCardId, onContextMenu, onSelectCard, onHoverCard }) {
+  const { setNodeRef, isOver } = useDroppable({ id: zone })
+  const topCard = cards[cards.length - 1]
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`relative w-[64px] h-[86px] rounded-lg border-2 border-dashed flex flex-col items-center justify-center transition-all duration-200
+        ${isOver ? 'border-[var(--color-gold-400)] bg-[var(--color-gold-500)]/10 scale-105' : `border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/40`}`}
+      style={{ borderColor: isOver ? undefined : color }}
+    >
+      {topCard ? (
+        <div className="relative w-full h-full flex items-center justify-center">
+          <DraggableCard
+            card={topCard}
+            zone={zone}
+            isHighlighted={topCard.id === highlightedCardId}
+            onContextMenu={onContextMenu}
+            onClick={() => onSelectCard?.(topCard.data)}
+            onMouseEnter={() => onHoverCard?.(topCard.data)}
+          />
+          <span className="absolute bottom-0.5 right-0.5 px-1 bg-black/80 text-[9px] font-bold text-white rounded shadow border border-white/20">
+            {cards.length}
+          </span>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center">
+          <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color }}>{label}</span>
+          <span className="text-[8px] text-[var(--color-text-muted)]">0</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function HandZone({ cards, highlightedCardId, onContextMenu, onSelectCard, onHoverCard }) {
   const { setNodeRef, isOver } = useDroppable({ id: ZONES.HAND })
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-wrap gap-1.5 p-1 min-h-[96px] max-h-[110px] overflow-y-auto transition-colors duration-200
-        ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''}`}
+      className={`flex flex-wrap gap-1 p-0.5 min-h-[78px] transition-colors duration-200 ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''}`}
     >
       {cards.length === 0 ? (
-        <span className="text-xs text-[var(--color-text-muted)] m-auto font-mono">Empty Hand</span>
+        <span className="text-[10px] text-[var(--color-text-muted)] m-auto font-mono">Empty Hand</span>
       ) : (
         cards.map((card) => (
           <DraggableCard
             key={card.id}
             card={card}
             zone={ZONES.HAND}
+            isHighlighted={card.id === highlightedCardId}
             onContextMenu={onContextMenu}
             onClick={() => onSelectCard?.(card.data)}
+            onMouseEnter={() => onHoverCard?.(card.data)}
           />
         ))
       )}
@@ -309,25 +353,26 @@ function HandZone({ cards, onContextMenu, onSelectCard }) {
   )
 }
 
-function ExtraDeckZone({ cards, onContextMenu, onSelectCard }) {
+function ExtraDeckZone({ cards, highlightedCardId, onContextMenu, onSelectCard, onHoverCard }) {
   const { setNodeRef, isOver } = useDroppable({ id: ZONES.EXTRA })
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-wrap gap-1.5 p-1 min-h-[96px] max-h-[110px] overflow-y-auto transition-colors duration-200
-        ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''}`}
+      className={`flex flex-wrap gap-1 p-0.5 min-h-[78px] transition-colors duration-200 ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''}`}
     >
       {cards.length === 0 ? (
-        <span className="text-xs text-[var(--color-text-muted)] m-auto font-mono">Empty Extra Deck</span>
+        <span className="text-[10px] text-[var(--color-text-muted)] m-auto font-mono">Empty Extra Deck</span>
       ) : (
         cards.map((card) => (
           <DraggableCard
             key={card.id}
             card={card}
             zone={ZONES.EXTRA}
+            isHighlighted={card.id === highlightedCardId}
             onContextMenu={onContextMenu}
             onClick={() => onSelectCard?.(card.data)}
+            onMouseEnter={() => onHoverCard?.(card.data)}
           />
         ))
       )}
@@ -335,25 +380,26 @@ function ExtraDeckZone({ cards, onContextMenu, onSelectCard }) {
   )
 }
 
-function DeckZone({ cards, onContextMenu, onSelectCard }) {
+function DeckZone({ cards, highlightedCardId, onContextMenu, onSelectCard, onHoverCard }) {
   const { setNodeRef, isOver } = useDroppable({ id: ZONES.DECK })
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-wrap gap-1.5 p-1 min-h-[96px] max-h-[140px] overflow-y-auto transition-colors duration-200
-        ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''}`}
+      className={`flex flex-wrap gap-1 p-0.5 min-h-[78px] max-h-[180px] overflow-y-auto transition-colors duration-200 ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''}`}
     >
       {cards.length === 0 ? (
-        <span className="text-xs text-[var(--color-text-muted)] m-auto font-mono">Empty Deck</span>
+        <span className="text-[10px] text-[var(--color-text-muted)] m-auto font-mono">Empty Deck</span>
       ) : (
         cards.map((card) => (
           <DraggableCard
             key={card.id}
             card={card}
             zone={ZONES.DECK}
+            isHighlighted={card.id === highlightedCardId}
             onContextMenu={onContextMenu}
             onClick={() => onSelectCard?.(card.data)}
+            onMouseEnter={() => onHoverCard?.(card.data)}
           />
         ))
       )}
@@ -361,7 +407,7 @@ function DeckZone({ cards, onContextMenu, onSelectCard }) {
   )
 }
 
-function DraggableCard({ card, zone, isFaceDown, isDefense, onContextMenu, onClick }) {
+function DraggableCard({ card, zone, isFaceDown, isDefense, isHighlighted, onContextMenu, onClick, onMouseEnter }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${zone}-${card.id}`,
     data: { instanceId: card.id, cardId: card.cardId, fromZone: zone, data: card.data },
@@ -372,55 +418,21 @@ function DraggableCard({ card, zone, isFaceDown, isDefense, onContextMenu, onCli
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={`relative cursor-grab active:cursor-grabbing transition-all duration-150 flex-shrink-0
+      className={`relative cursor-grab active:cursor-grabbing transition-all duration-300 ease-out flex-shrink-0 rounded transform-gpu
         ${isDragging ? 'opacity-30 scale-90' : 'hover:scale-105 hover:z-10'}
-        ${isDefense ? 'rotate-90' : ''}`}
+        ${isDefense ? 'rotate-90' : ''}
+        ${isHighlighted ? 'ring-4 ring-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.9)] scale-110 z-50 animate-pulse' : ''}`}
       onContextMenu={(e) => onContextMenu(e, card, zone)}
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
     >
       {isFaceDown ? (
         <div className="card-thumbnail bg-gradient-to-br from-[#1a1a5e] to-[#0d0d3d] border border-[var(--color-border)] flex items-center justify-center">
           <div className="w-6 h-8 border border-[var(--color-gold-600)]/40 rounded-sm bg-[var(--color-gold-700)]/10" />
         </div>
       ) : (
-        <img src={getCardImageUrl(card.cardId, 'small')} alt={card.data?.name || ''} className="card-thumbnail" />
+        <img src={getCardImageUrl(card.cardId, 'small')} alt={card.data?.name || ''} className="card-thumbnail transition-all duration-300" />
       )}
-    </div>
-  )
-}
-
-function LPCounter({ lp, onChange }) {
-  const [editing, setEditing] = useState(false)
-  const [tempLp, setTempLp] = useState(String(lp))
-
-  const handleSubmit = () => {
-    const val = parseInt(tempLp) || 0
-    onChange(Math.max(0, val))
-    setEditing(false)
-  }
-
-  if (editing) {
-    return (
-      <input
-        type="number"
-        value={tempLp}
-        onChange={(e) => setTempLp(e.target.value)}
-        onBlur={handleSubmit}
-        onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-        className="w-20 text-center text-sm font-bold bg-[var(--color-bg-tertiary)] border border-[var(--color-gold-500)] rounded px-1 py-0.5 text-[var(--color-gold-400)] focus:outline-none"
-        autoFocus
-      />
-    )
-  }
-
-  return (
-    <div className="flex items-center gap-1">
-      <button onClick={() => onChange(lp - 100)} className="w-6 h-6 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-accent-rose)] text-xs hover:bg-[var(--color-bg-hover)] transition-colors">−</button>
-      <button onClick={() => setEditing(true)} className="px-3 py-0.5 rounded bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] hover:border-[var(--color-gold-500)] transition-colors">
-        <span className="text-[10px] text-[var(--color-text-muted)]">LP</span>
-        <span className="ml-1 text-sm font-bold text-[var(--color-gold-400)]">{lp}</span>
-      </button>
-      <button onClick={() => onChange(lp + 100)} className="w-6 h-6 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-accent-teal)] text-xs hover:bg-[var(--color-bg-hover)] transition-colors">+</button>
     </div>
   )
 }

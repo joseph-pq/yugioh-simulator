@@ -9,11 +9,29 @@
 const API_BASE = 'https://db.ygoprodeck.com/api/v7/cardinfo.php';
 const IMAGE_BASE = 'https://images.ygoprodeck.com/images';
 
+export const TOKEN_IMAGE_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="290" viewBox="0 0 200 290">
+  <rect width="200" height="290" rx="10" fill="#78716c" stroke="#44403c" stroke-width="4"/>
+  <rect x="15" y="15" width="170" height="25" rx="4" fill="#a8a29e"/>
+  <text x="100" y="32" font-family="sans-serif" font-size="13" font-weight="bold" fill="#1c1917" text-anchor="middle">MONSTER TOKEN</text>
+  <rect x="20" y="48" width="160" height="150" rx="6" fill="#57534e" stroke="#292524" stroke-width="2"/>
+  <circle cx="100" cy="123" r="42" fill="#a8a29e" opacity="0.8"/>
+  <polygon points="100,90 125,145 75,145" fill="#e7e5e4"/>
+  <rect x="15" y="206" width="170" height="70" rx="4" fill="#d6d3d1"/>
+  <text x="22" y="224" font-family="sans-serif" font-size="10" font-weight="bold" fill="#292524">[Token / Monster]</text>
+  <text x="22" y="240" font-family="sans-serif" font-size="9" fill="#57534e">This card can be used as any Token.</text>
+  <text x="175" y="266" font-family="sans-serif" font-size="10" font-weight="bold" fill="#1c1917" text-anchor="end">ATK/ 0  DEF/ 0</text>
+</svg>
+`)}`;
+
 /**
  * Build the small image URL for a card ID.
  * Uses `cards_small` (100x145px, ~25KB) for thumbnails.
  */
 export function getCardImageUrl(cardId, size = 'small') {
+  if (!cardId || cardId === 99999999 || String(cardId).toLowerCase().includes('token')) {
+    return TOKEN_IMAGE_SVG;
+  }
   const folder = size === 'small' ? 'cards_small' : size === 'cropped' ? 'cards_cropped' : 'cards';
   return `${IMAGE_BASE}/${folder}/${cardId}.jpg`;
 }

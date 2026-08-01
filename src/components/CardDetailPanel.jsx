@@ -1,23 +1,21 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { getCardImageUrl } from '../services/ygoproApi'
 
 /**
- * Side panel showing full card art, name, type, stats, and description.
- * Appears on the right side of the screen when a card is selected.
+ * Side panel focused on card text content first.
+ * Displays card details, stats, description text, and a thumbnail in the corner.
+ * Clicking the thumbnail opens a high-res image preview modal.
  */
-export default function CardDetailPanel({ card, onClose, onAddCard }) {
-  const [imgLoaded, setImgLoaded] = useState(false)
+export default function CardDetailPanel({ card, onClose }) {
+  const [isMaximized, setIsMaximized] = useState(false)
 
   if (!card) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-6">
-        <div className="w-20 h-20 rounded-2xl bg-[var(--color-bg-tertiary)] flex items-center justify-center mb-4">
-          <svg className="w-8 h-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
+        <div className="w-14 h-14 rounded-2xl bg-[var(--color-bg-tertiary)] flex items-center justify-center mb-3">
+          <span className="text-2xl">🃏</span>
         </div>
-        <p className="text-sm text-[var(--color-text-muted)]">Select a card to view details</p>
+        <p className="text-xs text-[var(--color-text-muted)]">Hover or click a card to view details</p>
       </div>
     )
   }
@@ -25,100 +23,111 @@ export default function CardDetailPanel({ card, onClose, onAddCard }) {
   const frameColor = getFrameColor(card.frameType)
 
   return (
-    <div className="h-full flex flex-col animate-fade-in overflow-y-auto">
-      {/* Close button */}
-      {onClose && (
-        <button onClick={onClose} className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-[var(--color-bg-tertiary)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] transition-colors">
-          ✕
-        </button>
-      )}
+    <div className="h-full flex flex-col animate-fade-in p-4 overflow-y-auto relative">
+      {/* Top Header: Card Content FIRST, Card Image in top-right corner */}
+      <div className="flex items-start justify-between gap-3 mb-3 border-b border-[var(--color-border)] pb-3">
+        {/* Left: Card Metadata & Content */}
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+          <h2 className="text-base font-bold text-[var(--color-text-primary)] leading-snug truncate" title={card.name}>
+            {card.name}
+          </h2>
 
-      {/* Card image */}
-      <div className="relative px-6 pt-5 pb-3 flex justify-center">
-        {!imgLoaded && (
-          <div className="w-[140px] h-[204px] rounded-lg loading-shimmer" />
-        )}
-        <img
-          src={getCardImageUrl(card.id, 'full')}
-          alt={card.name}
-          className={`w-[140px] rounded-lg shadow-[var(--shadow-card)] transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0 absolute'}`}
-          onLoad={() => setImgLoaded(true)}
-          loading="eager"
-        />
-      </div>
-
-      {/* Card info */}
-      <div className="px-5 pb-5 flex-1 flex flex-col gap-3">
-        {/* Name */}
-        <h2 className="text-lg font-bold text-[var(--color-text-primary)] leading-snug">
-          {card.name}
-        </h2>
-
-        {/* Type badge */}
-        <div className="flex flex-wrap gap-1.5">
-          <span
-            className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
-            style={{ backgroundColor: frameColor + '25', color: frameColor }}
-          >
-            {card.humanType || card.type}
-          </span>
-          {card.attribute && (
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]">
-              {card.attribute}
+          {/* Type Badges */}
+          <div className="flex flex-wrap gap-1">
+            <span
+              className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
+              style={{ backgroundColor: frameColor + '25', color: frameColor }}
+            >
+              {card.humanType || card.type}
             </span>
-          )}
-          {card.race && (
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]">
-              {card.race}
-            </span>
-          )}
-        </div>
-
-        {/* Stats row */}
-        {(card.atk !== null || card.def !== null || card.level !== null) && (
-          <div className="flex items-center gap-3 text-sm">
-            {card.level !== null && (
-              <span className="flex items-center gap-1 text-[var(--color-gold-400)]">
-                <span className="text-xs">★</span> {card.level}
+            {card.attribute && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]">
+                {card.attribute}
               </span>
             )}
-            {card.atk !== null && (
-              <span className="text-[var(--color-accent-rose)]">
-                ATK {card.atk}
-              </span>
-            )}
-            {card.def !== null && (
-              <span className="text-[var(--color-accent-blue)]">
-                DEF {card.def}
+            {card.race && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]">
+                {card.race}
               </span>
             )}
           </div>
-        )}
 
-        {/* Archetype */}
-        {card.archetype && (
-          <p className="text-xs text-[var(--color-text-muted)]">
-            Archetype: <span className="text-[var(--color-accent-purple)]">{card.archetype}</span>
-          </p>
-        )}
+          {/* Stats row */}
+          {(card.atk !== null || card.def !== null || card.level !== null) && (
+            <div className="flex items-center gap-2.5 text-xs font-mono font-bold mt-0.5">
+              {card.level !== null && (
+                <span className="text-yellow-400 flex items-center gap-0.5">
+                  <span>★</span>{card.level}
+                </span>
+              )}
+              {card.atk !== null && (
+                <span className="text-rose-400">ATK/{card.atk}</span>
+              )}
+              {card.def !== null && (
+                <span className="text-sky-400">DEF/{card.def}</span>
+              )}
+            </div>
+          )}
 
-        {/* Description */}
-        <div className="mt-1 p-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)]">
-          <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap">
+          {card.archetype && (
+            <div className="text-[10px] text-[var(--color-text-muted)] truncate">
+              Archetype: <span className="text-purple-400 font-semibold">{card.archetype}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Right Corner: Card Thumbnail (Click to Maximize) */}
+        <div className="flex-shrink-0 flex flex-col items-center">
+          <button
+            onClick={() => setIsMaximized(true)}
+            className="group relative rounded border border-[var(--color-border)] overflow-hidden shadow hover:border-[var(--color-gold-400)] transition-all"
+            title="Click to view full image"
+          >
+            <img
+              src={getCardImageUrl(card.id, 'small')}
+              alt={card.name}
+              className="w-14 h-20 object-cover group-hover:scale-105 transition-transform duration-200"
+            />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold">
+              🔍
+            </div>
+          </button>
+          <span className="text-[9px] text-[var(--color-text-muted)] mt-0.5">Enlarge</span>
+        </div>
+      </div>
+
+      {/* Main Body: Card Text Description */}
+      <div className="flex-1 flex flex-col">
+        <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">Card Description</h3>
+        <div className="flex-1 p-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] overflow-y-auto">
+          <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap font-sans">
             {card.desc}
           </p>
         </div>
-
-        {/* Add to deck button */}
-        {onAddCard && (
-          <button
-            onClick={() => onAddCard(card)}
-            className="mt-auto w-full py-2.5 rounded-lg bg-gradient-to-r from-[var(--color-gold-500)] to-[var(--color-gold-600)] text-[var(--color-bg-primary)] font-semibold text-sm hover:from-[var(--color-gold-400)] hover:to-[var(--color-gold-500)] transition-all duration-200 active:scale-[0.98]"
-          >
-            Add to Deck
-          </button>
-        )}
       </div>
+
+      {/* Image Modal (Maximized view) */}
+      {isMaximized && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setIsMaximized(false)}
+        >
+          <div className="relative max-w-sm w-full flex flex-col items-center bg-[var(--color-bg-secondary)] border border-[var(--color-border)] p-4 rounded-2xl shadow-2xl">
+            <button
+              onClick={() => setIsMaximized(false)}
+              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center text-sm hover:bg-black transition-colors"
+            >
+              ✕
+            </button>
+            <img
+              src={getCardImageUrl(card.id, 'full')}
+              alt={card.name}
+              className="max-h-[70vh] rounded-lg shadow-2xl mb-3 object-contain"
+            />
+            <p className="text-sm font-bold text-[var(--color-text-primary)] text-center">{card.name}</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

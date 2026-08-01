@@ -258,6 +258,54 @@ export function GameProvider({ children }) {
     }, 'mill', { n: count })
   }, [updateBoardState])
 
+  const generateToken = useCallback((targetZone = 'hand') => {
+    updateBoardState(prev => {
+      const tokenInstance = makeInstance(99999999, {
+        id: 99999999,
+        name: 'Monster Token',
+        type: 'Token',
+        humanType: 'Token Monster',
+        frameType: 'token',
+        race: 'Cyberse',
+        attribute: 'LIGHT',
+        atk: 0,
+        def: 0,
+        level: 1,
+        desc: 'This card can be used as any Monster Token.',
+      })
+
+      if (['hand', 'gy', 'banish', 'free', 'deck'].includes(targetZone)) {
+        prev[targetZone].push(tokenInstance)
+      } else {
+        if (prev[targetZone] === null) {
+          prev[targetZone] = { ...tokenInstance, position: POSITION.FACE_UP_ATK }
+        } else {
+          prev.hand.push(tokenInstance)
+        }
+      }
+      return prev
+    }, 'token', { to: targetZone })
+  }, [updateBoardState])
+
+  const activateEffect = useCallback((instanceId, zone) => {
+    updateBoardState(prev => {
+      return prev
+    }, 'effect', { i: instanceId, z: zone })
+  }, [updateBoardState])
+
+  const removeToken = useCallback((instanceId, zone) => {
+    updateBoardState(prev => {
+      if (['hand', 'gy', 'banish', 'free', 'deck', 'extra'].includes(zone)) {
+        prev[zone] = prev[zone].filter(c => c.id !== instanceId)
+      } else {
+        if (prev[zone]?.id === instanceId) {
+          prev[zone] = null
+        }
+      }
+      return prev
+    }, 'removetoken', { i: instanceId, z: zone })
+  }, [updateBoardState])
+
   const resetBoard = useCallback(() => {
     setBoard(createEmptyBoard())
     setCombo([])
@@ -305,6 +353,9 @@ export function GameProvider({ children }) {
     addToHand,
     returnToDeck,
     millCards,
+    generateToken,
+    removeToken,
+    activateEffect,
     resetBoard,
     startRecording,
     stopRecording,
