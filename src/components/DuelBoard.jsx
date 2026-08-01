@@ -172,7 +172,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
         {/* Main Duel Field Area */}
         <div className="flex-1 flex items-center justify-center p-2 min-h-0">
           <div className="flex items-center justify-center gap-3 w-full max-w-4xl">
-            
+
             {/* Left: FREE Zone (Vertical Rectangle Stack) */}
             <VerticalStackPileZone
               zone={ZONES.FREE}
@@ -186,31 +186,31 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
             />
 
             {/* Left Column 2: FIELD (Top) & EXTRA (Bottom) */}
-            <div className="flex flex-col justify-between gap-3 h-[255px]">
-              <BoardZone zone={ZONES.FIELD} card={board.field} label="FIELD" outlineColor="border-yellow-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-              <BoardZone zone={ZONES.EXTRA_PILE} card={board.extra_pile} label="EXTRA" outlineColor="border-slate-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            <div className="flex flex-col justify-between gap-3 h-[200px]">
+              <BoardZone zone={ZONES.FIELD} card={board.field} label="" outlineColor="border-yellow-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              <BoardZone zone={ZONES.EXTRA_PILE} card={board.extra_pile} label="" outlineColor="border-slate-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
             </div>
 
             {/* Center: EMZs (Top), Monster Zones (Middle), Spell/Trap Zones (Bottom) */}
             <div className="flex flex-col gap-2.5 items-center">
               {/* EMZ Row */}
-              <div className="flex justify-center gap-6 py-0.5">
-                <BoardZone zone={ZONES.EMZ1} card={board.emz1} label="EMZ" outlineColor="border-purple-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.EMZ2} card={board.emz2} label="EMZ" outlineColor="border-purple-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              <div className="flex justify-center gap-22 py-0.5">
+                <BoardZone zone={ZONES.EMZ1} card={board.emz1} label="" outlineColor="border-purple-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.EMZ2} card={board.emz2} label="" outlineColor="border-purple-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
               </div>
 
               {/* Monster Row: M1, M2, M3 */}
               <div className="flex gap-3">
-                <BoardZone zone={ZONES.M1} card={board.m1} label="M1" outlineColor="border-blue-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.M2} card={board.m2} label="M2" outlineColor="border-blue-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.M3} card={board.m3} label="M3" outlineColor="border-blue-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.M1} card={board.m1} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.M2} card={board.m2} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.M3} card={board.m3} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
               </div>
 
               {/* Spell/Trap Row: S/T1, S/T2, S/T3 */}
               <div className="flex gap-3">
-                <BoardZone zone={ZONES.ST1} card={board.st1} label="S/T1" outlineColor="border-emerald-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.ST2} card={board.st2} label="S/T2" outlineColor="border-emerald-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.ST3} card={board.st3} label="S/T3" outlineColor="border-emerald-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.ST1} card={board.st1} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.ST2} card={board.st2} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.ST3} card={board.st3} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
               </div>
             </div>
 
@@ -329,9 +329,9 @@ function VerticalStackPileZone({ zone, cards, label, color, effectCardId, onCont
   const availableSpan = 155
   const cardHeight = 86
   const defaultStep = 26
-  
+
   // Calculate dynamic step offset so ALL cards always fit cleanly inside the placeholder
-  const stepOffset = cardCount > 1 
+  const stepOffset = cardCount > 1
     ? Math.max(4, Math.min(defaultStep, Math.floor(availableSpan / (cardCount - 1))))
     : defaultStep
 
@@ -356,7 +356,7 @@ function VerticalStackPileZone({ zone, cards, label, color, effectCardId, onCont
 
       {cards.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-[8px] text-[var(--color-text-muted)] font-mono">
-          Empty
+          {/* Empty */}
         </div>
       ) : (
         /* Dynamic Vertical Stack Cascade */
