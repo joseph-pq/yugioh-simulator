@@ -1,11 +1,11 @@
 /**
  * URL State Service
- * 
+ *
  * Encodes/decodes deck + combo state into URL hash fragments
  * using lz-string compression for sharing.
- * 
+ *
  * URL format: https://host/app/#d=<compressed>
- * 
+ *
  * The hash fragment is NOT sent to the server, so it can be
  * arbitrarily long (modern browsers support 32KB+).
  */
@@ -101,7 +101,7 @@ export function generateShareUrl(state) {
 /**
  * Get the approximate size of the encoded state.
  * Useful for showing users how large their shared URL is.
- * @param {Object} state 
+ * @param {Object} state
  * @returns {{ jsonBytes: number, compressedChars: number, urlLength: number }}
  */
 export function getStateSizeInfo(state) {

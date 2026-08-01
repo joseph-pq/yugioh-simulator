@@ -346,11 +346,10 @@ function VerticalStackPileZone({ zone, cards, label, color, effectCardId, onCont
     <div
       ref={setNodeRef}
       id={`zone-${zone}`}
-      className={`relative w-[74px] h-[255px] rounded-lg border-2 border-dashed flex flex-col p-1 transition-all duration-200 shadow-inner ${
-        isOver
-          ? 'border-[var(--color-gold-400)] bg-[var(--color-gold-500)]/15 scale-105 z-40'
-          : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/40'
-      }`}
+      className={`relative w-[74px] h-[255px] rounded-lg border-2 border-dashed flex flex-col p-1 transition-all duration-200 shadow-inner ${isOver
+        ? 'border-[var(--color-gold-400)] bg-[var(--color-gold-500)]/15 scale-105 z-40'
+        : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/40'
+        }`}
       style={{ borderColor: isOver ? undefined : color }}
     >
       {/* Zone Title Header */}
@@ -494,13 +493,12 @@ function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, o
       onClick={onClick}
       onMouseEnter={onMouseEnter}
     >
-      {isFaceDown ? (
-        <div className="card-thumbnail bg-gradient-to-br from-[#1a1a5e] to-[#0d0d3d] border border-[var(--color-border)] flex items-center justify-center">
-          <div className="w-6 h-8 border border-[var(--color-gold-600)]/40 rounded-sm bg-[var(--color-gold-700)]/10" />
-        </div>
-      ) : (
-        <img src={getCardImageUrl(card.cardId, 'small')} alt={card.data?.name || ''} className="card-thumbnail transition-all duration-200" />
-      )}
+      <img
+        src={getCardImageUrl(card.cardId, 'small')}
+        alt={card.data?.name || ''}
+        className={`card-thumbnail transition-all duration-200 ${isFaceDown ? 'brightness-35' : ''
+          }`}
+      />
     </div>
   )
 }
