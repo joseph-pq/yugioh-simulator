@@ -26,14 +26,20 @@ export const ZONES = {
   EM1: 'em1', EM2: 'em2', EM3: 'em3',
   ST1: 'st1', ST2: 'st2', ST3: 'st3',
   FIELD: 'field',
+  EFIELD: 'efield',
   GY: 'gy',
+  EGY: 'egy',
   BANISH: 'banish',
+  EBANISH: 'ebanish',
   DECK: 'deck',
   EXTRA: 'extra',
+  EEXTRA: 'eextra',
   FREE: 'free',
+  EFREE: 'efree',
   EMZ1: 'emz1',
   EMZ2: 'emz2',
   EXTRA_PILE: 'extra_pile',
+  EEXTRA_PILE: 'eextra_pile',
 }
 
 export const MONSTER_ZONES = [ZONES.M1, ZONES.M2, ZONES.M3, ZONES.EMZ1, ZONES.EMZ2]
@@ -59,11 +65,17 @@ function createEmptyBoard() {
     em1: null, em2: null, em3: null,
     st1: null, st2: null, st3: null,
     field: null,
+    efield: null,
     gy: [],
+    egy: [],
+    ebanish: [],
+    eextra: [],
     banish: [],
     deck: [],         // array of { id, cardId, data }
     extra: [],        // array of { id, cardId, data }
+    eextra: [],        // array of { id, cardId, data }
     free: [],         // array of { id, cardId, data }
+    efree: [],         // array of { id, cardId, data }
     emz1: null,
     emz2: null,
     extra_pile: null,

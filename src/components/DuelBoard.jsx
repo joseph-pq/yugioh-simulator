@@ -173,22 +173,28 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
         <div className="flex-1 flex items-center justify-center p-2 min-h-0">
           <div className="flex items-center justify-center gap-3 w-full max-w-4xl">
 
-            {/* Left: FREE Zone (Vertical Rectangle Stack) */}
-            <VerticalStackPileZone
-              zone={ZONES.FREE}
-              cards={board.free}
-              label="FREE"
-              color="var(--color-text-muted)"
-              effectCardId={effectCardId}
-              onContextMenu={handleContextMenu}
-              onSelectCard={onSelectCard}
-              onHoverCard={onHoverCard}
-            />
+            <div className="flex flex-col justify-between gap-3 h-[480px]">
+              <VerticalStackPileZone zone={ZONES.EBANISH} cards={board.ebanish} label="BANISH" color="var(--color-accent-blue)" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              {/* Left: FREE Zone (Vertical Rectangle Stack) */}
+              <VerticalStackPileZone
+                zone={ZONES.FREE}
+                cards={board.free}
+                label="FREE"
+                color="var(--color-text-muted)"
+                effectCardId={effectCardId}
+                onContextMenu={handleContextMenu}
+                onSelectCard={onSelectCard}
+                onHoverCard={onHoverCard}
+              />
+            </div>
 
-            {/* Left Column 2: FIELD (Top) & EXTRA (Bottom) */}
-            <div className="flex flex-col justify-between gap-3 h-[200px]">
-              <BoardZone zone={ZONES.FIELD} card={board.field} label="" outlineColor="border-yellow-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-              <BoardZone zone={ZONES.EXTRA_PILE} card={board.extra_pile} label="" outlineColor="border-slate-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            <div className="flex flex-col justify-between gap-3 h-[480px]">
+              <VerticalStackPileZone zone={ZONES.EGY} cards={board.egy} label="GRAVE" color="var(--color-accent-rose)" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              {/* Left Column 2: FIELD (Top) & EXTRA (Bottom) */}
+              <div className="flex flex-col justify-between gap-3 h-[240px]">
+                <BoardZone zone={ZONES.FIELD} card={board.field} label="" outlineColor="border-yellow-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.EXTRA_PILE} card={board.extra_pile} label="" outlineColor="border-slate-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              </div>
             </div>
 
             {/* Center: EMZs (Top), Monster Zones (Middle), Spell/Trap Zones (Bottom) */}
@@ -228,8 +234,25 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
             </div>
 
             {/* Right: GRAVE & BANISH Vertical Rectangle Stacked Piles */}
-            <div className="flex gap-2.5">
+            {/* <div className="flex gap-2.5"> */}
+            <div className="flex flex-col justify-between gap-3 h-[480px]">
+              <div className="flex flex-col justify-between gap-3 h-[240px]">
+                <BoardZone zone={ZONES.EEXTRA_PILE} card={board.eextra_pile} label="" outlineColor="border-slate-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.EFIELD} card={board.efield} label="" outlineColor="border-yellow-600/50" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              </div>
               <VerticalStackPileZone zone={ZONES.GY} cards={board.gy} label="GRAVE" color="var(--color-accent-rose)" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            </div>
+            <div className="flex flex-col justify-between gap-3 h-[480px]">
+              <VerticalStackPileZone
+                zone={ZONES.EFREE}
+                cards={board.efree}
+                label="FREE"
+                color="var(--color-text-muted)"
+                effectCardId={effectCardId}
+                onContextMenu={handleContextMenu}
+                onSelectCard={onSelectCard}
+                onHoverCard={onHoverCard}
+              />
               <VerticalStackPileZone zone={ZONES.BANISH} cards={board.banish} label="BANISH" color="var(--color-accent-blue)" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
             </div>
 
