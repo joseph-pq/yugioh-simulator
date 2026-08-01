@@ -247,7 +247,6 @@ export default function SimulatorPage() {
         onDrop={handleDrop}
       >
         <div className="glass-panel p-10 max-w-lg text-center animate-fade-in">
-          <div className="text-5xl mb-4">🃏</div>
           <h2 className="text-2xl font-bold text-[var(--color-text-primary)] mb-3">
             Load a Deck to Simulate
           </h2>
@@ -261,7 +260,7 @@ export default function SimulatorPage() {
               disabled={importing}
               className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-[var(--color-gold-500)] to-[var(--color-gold-600)] text-[var(--color-bg-primary)] font-semibold text-sm hover:from-[var(--color-gold-400)] hover:to-[var(--color-gold-500)] transition-all duration-200 active:scale-95 disabled:opacity-50"
             >
-              {importing ? '⏳ Importing...' : '📥 Import YDK File'}
+              {importing ? 'Importing...' : 'Import YDK File'}
             </button>
             <input ref={fileInputRef} type="file" accept=".ydk,.txt" className="hidden" onChange={(e) => e.target.files[0] && handleFileImport(e.target.files[0])} />
           </div>
@@ -419,9 +418,8 @@ export default function SimulatorPage() {
 
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-xl animate-slide-up ${
-          toast.type === 'error' ? 'bg-[var(--color-accent-rose)] text-white' : 'bg-[var(--color-accent-teal)] text-white'
-        }`}>
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-xl animate-slide-up ${toast.type === 'error' ? 'bg-[var(--color-accent-rose)] text-white' : 'bg-[var(--color-accent-teal)] text-white'
+          }`}>
           {toast.msg}
         </div>
       )}

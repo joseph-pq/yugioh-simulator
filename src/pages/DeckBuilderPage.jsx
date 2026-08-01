@@ -135,14 +135,14 @@ export default function DeckBuilderPage() {
               disabled={importing}
               className="px-4 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[var(--color-gold-500)] to-[var(--color-gold-600)] text-[var(--color-bg-primary)] hover:from-[var(--color-gold-400)] hover:to-[var(--color-gold-500)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {importing ? '⏳ Importing...' : '📥 Import YDK'}
+              {importing ? 'Importing...' : 'Import YDK'}
             </button>
             <input ref={fileInputRef} type="file" accept=".ydk,.txt" className="hidden" onChange={(e) => { if (e.target.files[0]) handleFileImport(e.target.files[0]); e.target.value = '' }} />
             <button onClick={handleExport} disabled={deck.mainDeck.length === 0} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-              📤 Export
+              Export
             </button>
             <button onClick={deck.clearDeck} disabled={deck.mainDeck.length === 0 && deck.extraDeck.length === 0} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-accent-rose)] hover:bg-[var(--color-accent-rose)]/10 border border-[var(--color-border)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-              🗑 Clear
+              Clear
             </button>
           </div>
         </div>
@@ -160,7 +160,6 @@ export default function DeckBuilderPage() {
         <div className="flex-1 overflow-y-auto p-4">
           {deck.mainDeck.length === 0 && deck.extraDeck.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center border-2 border-dashed border-[var(--color-border)] rounded-xl p-8">
-              <div className="text-4xl mb-3">🃏</div>
               <h3 className="text-lg font-semibold text-[var(--color-text-secondary)] mb-1">No cards yet</h3>
               <p className="text-sm text-[var(--color-text-muted)] max-w-xs mb-4">
                 Import a .ydk file to load your deck, or drag & drop it here
@@ -170,7 +169,7 @@ export default function DeckBuilderPage() {
                 disabled={importing}
                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[var(--color-gold-500)] to-[var(--color-gold-600)] text-[var(--color-bg-primary)] font-semibold text-sm hover:from-[var(--color-gold-400)] hover:to-[var(--color-gold-500)] transition-all active:scale-95 disabled:opacity-50"
               >
-                {importing ? '⏳ Importing...' : '📥 Import YDK File'}
+                {importing ? 'Importing...' : 'Import YDK File'}
               </button>
             </div>
           ) : (
@@ -237,9 +236,8 @@ export default function DeckBuilderPage() {
 
       {/* Toast notification */}
       {toast && (
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-xl animate-slide-up ${
-          toast.type === 'error' ? 'bg-[var(--color-accent-rose)] text-white' : 'bg-[var(--color-accent-teal)] text-white'
-        }`}>
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-xl animate-slide-up ${toast.type === 'error' ? 'bg-[var(--color-accent-rose)] text-white' : 'bg-[var(--color-accent-teal)] text-white'
+          }`}>
           {toast.msg}
         </div>
       )}

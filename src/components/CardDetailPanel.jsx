@@ -12,9 +12,6 @@ export default function CardDetailPanel({ card, onClose }) {
   if (!card) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-6">
-        <div className="w-14 h-14 rounded-2xl bg-[var(--color-bg-tertiary)] flex items-center justify-center mb-3">
-          <span className="text-2xl">🃏</span>
-        </div>
         <p className="text-xs text-[var(--color-text-muted)]">Hover or click a card to view details</p>
       </div>
     )

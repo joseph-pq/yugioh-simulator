@@ -162,6 +162,23 @@ export function GameProvider({ children }) {
     }, 'shuffle', {})
   }, [updateBoardState])
 
+  const sortDeck = useCallback(() => {
+    // Sort deck by type card: spell, trap, monster and then by name
+    updateBoardState(prev => {
+      prev.deck.sort((a, b) => {
+        const cardA = cardsRef.current[a.cardId]
+        const cardB = cardsRef.current[b.cardId]
+        if (!cardA || !cardB) return 0
+        const typeA = getOrderValue(cardA)
+        const typeB = getOrderValue(cardB)
+        if (typeA !== typeB) return typeA - typeB
+
+        return cardA.name.localeCompare(cardB.name)
+      })
+      return prev
+    }, 'sort', {})
+  }, [updateBoardState])
+
   const moveCard = useCallback((instanceId, fromZone, toZone, position) => {
     updateBoardState(prev => {
       let card = null
