@@ -1,0 +1,163 @@
+/**
+ * YGOPRO API Service
+ * 
+ * Provides card data from the YGOPRODeck API v7.
+ * Base URL: https://db.ygoprodeck.com/api/v7/cardinfo.php
+ * Rate limit: 20 req/sec per IP
+ */
+
+const API_BASE = 'https://db.ygoprodeck.com/api/v7/cardinfo.php';
+const IMAGE_BASE = 'https://images.ygoprodeck.com/images';
+
+/**
+ * Build the small image URL for a card ID.
+ * Uses `cards_small` (100x145px, ~25KB) for thumbnails.
+ */
+export function getCardImageUrl(cardId, size = 'small') {
+  const folder = size === 'small' ? 'cards_small' : size === 'cropped' ? 'cards_cropped' : 'cards';
+  return `${IMAGE_BASE}/${folder}/${cardId}.jpg`;
+}
+
+/**
+ * Fetch a single card by its passcode ID.
+ * @param {number} id - Card passcode
+ * @returns {Promise<Object>} Card data
+ */
+export async function fetchCardById(id) {
+  const res = await fetch(`${API_BASE}?id=${id}`);
+  if (!res.ok) throw new Error(`Failed to fetch card ${id}: ${res.status}`);
+  const data = await res.json();
+  return data.data[0];
+}
+
+/**
+ * Fetch multiple cards by their passcode IDs in a single request.
+ * The API supports comma-separated IDs.
+ * @param {number[]} ids - Array of card passcodes
+ * @returns {Promise<Object[]>} Array of card data
+ */
+export async function fetchCardsByIds(ids) {
+  if (ids.length === 0) return [];
+
+  // Deduplicate IDs for the API call
+  const uniqueIds = [...new Set(ids)];
+
+  // API may have URL length limits, so batch in groups of 50
+  const batchSize = 50;
+  const results = [];
+
+  for (let i = 0; i < uniqueIds.length; i += batchSize) {
+    const batch = uniqueIds.slice(i, i + batchSize);
+    const res = await fetch(`${API_BASE}?id=${batch.join(',')}`);
+    if (!res.ok) throw new Error(`Failed to fetch cards: ${res.status}`);
+    const data = await res.json();
+    results.push(...data.data);
+  }
+
+  return results;
+}
+
+/**
+ * Search cards with fuzzy name matching and optional filters.
+ * @param {Object} params - Search parameters
+ * @param {string} [params.fname] - Fuzzy name search
+ * @param {string} [params.type] - Card type filter
+ * @param {string} [params.race] - Race/spell type filter
+ * @param {string} [params.attribute] - Attribute filter
+ * @param {number} [params.level] - Level filter
+ * @param {string} [params.archetype] - Archetype filter
+ * @param {string} [params.format] - Format filter (default: 'duel links')
+ * @param {number} [params.num] - Max results (default: 30)
+ * @param {number} [params.offset] - Pagination offset
+ * @returns {Promise<{data: Object[], meta: Object}>}
+ */
+export async function searchCards(params = {}) {
+  const {
+    fname,
+    type,
+    race,
+    attribute,
+    level,
+    archetype,
+    format = 'duel links',
+    num = 30,
+    offset = 0,
+  } = params;
+
+  const query = new URLSearchParams();
+  if (fname) query.set('fname', fname);
+  if (type) query.set('type', type);
+  if (race) query.set('race', race);
+  if (attribute) query.set('attribute', attribute);
+  if (level) query.set('level', String(level));
+  if (archetype) query.set('archetype', archetype);
+  if (format) query.set('format', format);
+  query.set('num', String(num));
+  query.set('offset', String(offset));
+
+  const res = await fetch(`${API_BASE}?${query.toString()}`);
+  if (!res.ok) {
+    if (res.status === 400) return { data: [], meta: { total_rows: 0 } };
+    throw new Error(`Search failed: ${res.status}`);
+  }
+  return await res.json();
+}
+
+/**
+ * Fetch ALL Duel Links format cards for bulk caching.
+ * Returns a minimal card object for each card to save storage.
+ * 
+ * Total cards: ~8,200 (as of 2026)
+ * @param {function} [onProgress] - Progress callback(fetched, total)
+ * @returns {Promise<Object[]>} All card data
+ */
+export async function fetchAllDuelLinksCards(onProgress) {
+  const pageSize = 500;
+  let offset = 0;
+  let allCards = [];
+  let total = null;
+
+  while (true) {
+    const res = await fetch(
+      `${API_BASE}?format=duel%20links&num=${pageSize}&offset=${offset}`
+    );
+
+    if (!res.ok) throw new Error(`Bulk fetch failed at offset ${offset}: ${res.status}`);
+
+    const data = await res.json();
+    if (total === null) total = data.meta.total_rows;
+
+    allCards.push(...data.data.map(normalizeCard));
+    offset += pageSize;
+
+    if (onProgress) onProgress(allCards.length, total);
+    if (allCards.length >= total) break;
+
+    // Small delay to stay within rate limits
+    await new Promise(r => setTimeout(r, 100));
+  }
+
+  return allCards;
+}
+
+/**
+ * Normalize a raw API card object into a compact format for storage.
+ * Keeps only the fields we need to minimize IndexedDB size.
+ */
+export function normalizeCard(raw) {
+  return {
+    id: raw.id,
+    name: raw.name,
+    type: raw.type,
+    humanType: raw.humanReadableCardType,
+    frameType: raw.frameType,
+    desc: raw.desc,
+    race: raw.race,
+    atk: raw.atk ?? null,
+    def: raw.def ?? null,
+    level: raw.level ?? raw.linkval ?? null,
+    attribute: raw.attribute ?? null,
+    archetype: raw.archetype ?? null,
+    // Image URL derived from ID, no need to store
+  };
+}
