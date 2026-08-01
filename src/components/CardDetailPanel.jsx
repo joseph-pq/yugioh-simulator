@@ -3,8 +3,8 @@ import { getCardImageUrl } from '../services/ygoproApi'
 
 /**
  * Side panel focused on card text content first.
- * Displays card details, stats, description text, and a thumbnail in the corner.
- * Clicking the thumbnail opens a high-res image preview modal.
+ * Displays card details, stats, formatted description text with sentence line breaks and paragraph spacing,
+ * and a thumbnail in the corner. Clicking the thumbnail opens a high-res image preview modal.
  */
 export default function CardDetailPanel({ card, onClose }) {
   const [isMaximized, setIsMaximized] = useState(false)
@@ -96,13 +96,13 @@ export default function CardDetailPanel({ card, onClose }) {
         </div>
       </div>
 
-      {/* Main Body: Card Text Description */}
-      <div className="flex-1 flex flex-col">
-        <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">Card Description</h3>
+      {/* Main Body: Plain text card description with line breaks and paragraph spacing */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
+          Card Description
+        </h3>
         <div className="flex-1 p-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] overflow-y-auto">
-          <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap font-sans">
-            {card.desc}
-          </p>
+          {renderFormattedDescription(card.desc)}
         </div>
       </div>
 
@@ -128,6 +128,44 @@ export default function CardDetailPanel({ card, onClose }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Split Yu-Gi-Oh card text into plain text paragraphs and sentences with line breaks.
+ */
+function renderFormattedDescription(desc) {
+  if (!desc) return <p className="text-xs text-[var(--color-text-muted)]">No description available.</p>
+
+  // Split raw text into major blocks (by newline, numbered effects like (1) (2), or bullet points)
+  const rawBlocks = desc
+    .split(/\r?\n+/)
+    .flatMap(block => block.split(/(?=\([0-9]+\)|[①-⑩]|●)/g))
+    .map(b => b.trim())
+    .filter(Boolean)
+
+  return (
+    <div className="space-y-3 text-xs text-[var(--color-text-secondary)] leading-relaxed font-sans">
+      {rawBlocks.map((block, pIdx) => {
+        const sentences = block
+          .split(/\.\s+(?=[A-Z0-9①-⑩\(\(])/g)
+          .map(s => s.trim())
+          .filter(Boolean)
+
+        return (
+          <div key={pIdx} className="space-y-1">
+            {sentences.map((sentence, sIdx) => {
+              const formattedText = sentence.endsWith('.') || sentence.endsWith(':') || sentence.endsWith(';') ? sentence : sentence + '.'
+              return (
+                <div key={sIdx} className="leading-relaxed">
+                  {formattedText}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
     </div>
   )
 }

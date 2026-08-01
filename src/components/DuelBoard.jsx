@@ -5,9 +5,8 @@ import { getCardImageUrl } from '../services/ygoproApi'
 import CardContextMenu from './CardContextMenu'
 
 /**
- * Main Duel Board — Official Duel Links 5-Column Field Grid.
- * Displays vertical stacked cards for Grave and Banish piles with space between stacked cards.
- * Animates card movement during combo playback.
+ * Main Duel Board — Exact Duel Links Field Layout matching user reference:
+ * FREE (left) | FIELD & EXTRA (col 2) | EMZs, Monsters, S/T (center) | GRAVE & BANISH (right)
  */
 export default function DuelBoard({ onSelectCard, onHoverCard }) {
   const game = useGame()
@@ -138,34 +137,56 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col h-full select-none justify-between overflow-hidden">
-        {/* Duel Links Official 5-Column Field Grid */}
+        {/* Main Duel Field Area */}
         <div className="flex-1 flex items-center justify-center p-2 min-h-0">
-          <div className="grid grid-cols-5 gap-3 items-center justify-center w-full max-w-2xl">
+          <div className="flex items-center justify-center gap-3 w-full max-w-4xl">
             
-            {/* Row 1: Top Extra & Utility Zones */}
-            <div className="col-span-5 flex justify-center gap-6 py-0.5">
-              <PileZone zone={ZONES.FREE} cards={board.free} label="FREE" color="var(--color-text-muted)" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-              <BoardZone zone={ZONES.EMZ1} card={board.emz1} label="EMZ" outlineColor="border-purple-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-              <BoardZone zone={ZONES.EMZ2} card={board.emz2} label="EMZ" outlineColor="border-purple-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            {/* Left: FREE Zone (Vertical Rectangle Stack) */}
+            <VerticalStackPileZone
+              zone={ZONES.FREE}
+              cards={board.free}
+              label="FREE"
+              color="var(--color-text-muted)"
+              highlightedCardId={highlightedCardId}
+              onContextMenu={handleContextMenu}
+              onSelectCard={onSelectCard}
+              onHoverCard={onHoverCard}
+            />
+
+            {/* Left Column 2: FIELD (Top) & EXTRA (Bottom) */}
+            <div className="flex flex-col justify-between gap-3 h-[185px]">
+              <BoardZone zone={ZONES.FIELD} card={board.field} label="FIELD" outlineColor="border-yellow-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              <BoardZone zone={ZONES.EXTRA_PILE} card={board.extra_pile} label="EXTRA" outlineColor="border-slate-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
             </div>
 
-            {/* Row 2: Field (Left) | Monster Zones (Center 3) | Vertical Stacked Grave (Right) */}
-            <BoardZone zone={ZONES.FIELD} card={board.field} label="FIELD" outlineColor="border-yellow-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-            <BoardZone zone={ZONES.M1} card={board.m1} label="M1" outlineColor="border-blue-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-            <BoardZone zone={ZONES.M2} card={board.m2} label="M2" outlineColor="border-blue-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-            <BoardZone zone={ZONES.M3} card={board.m3} label="M3" outlineColor="border-blue-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-            
-            {/* Vertical Rectangle Stacked Grave */}
-            <VerticalStackPileZone zone={ZONES.GY} cards={board.gy} label="GRAVE" color="var(--color-accent-rose)" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            {/* Center: EMZs (Top), Monster Zones (Middle), Spell/Trap Zones (Bottom) */}
+            <div className="flex flex-col gap-2.5 items-center">
+              {/* EMZ Row */}
+              <div className="flex justify-center gap-6 py-0.5">
+                <BoardZone zone={ZONES.EMZ1} card={board.emz1} label="EMZ" outlineColor="border-purple-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.EMZ2} card={board.emz2} label="EMZ" outlineColor="border-purple-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              </div>
 
-            {/* Row 3: Extra Pile (Left) | Spell/Trap Zones (Center 3) | Vertical Stacked Banish (Right) */}
-            <BoardZone zone={ZONES.EXTRA_PILE} card={board.extra_pile} label="EXTRA" outlineColor="border-slate-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-            <BoardZone zone={ZONES.ST1} card={board.st1} label="S/T1" outlineColor="border-emerald-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-            <BoardZone zone={ZONES.ST2} card={board.st2} label="S/T2" outlineColor="border-emerald-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-            <BoardZone zone={ZONES.ST3} card={board.st3} label="S/T3" outlineColor="border-emerald-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-            
-            {/* Vertical Rectangle Stacked Banish */}
-            <VerticalStackPileZone zone={ZONES.BANISH} cards={board.banish} label="BANISH" color="var(--color-accent-blue)" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              {/* Monster Row: M1, M2, M3 */}
+              <div className="flex gap-3">
+                <BoardZone zone={ZONES.M1} card={board.m1} label="M1" outlineColor="border-blue-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.M2} card={board.m2} label="M2" outlineColor="border-blue-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.M3} card={board.m3} label="M3" outlineColor="border-blue-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              </div>
+
+              {/* Spell/Trap Row: S/T1, S/T2, S/T3 */}
+              <div className="flex gap-3">
+                <BoardZone zone={ZONES.ST1} card={board.st1} label="S/T1" outlineColor="border-emerald-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.ST2} card={board.st2} label="S/T2" outlineColor="border-emerald-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.ST3} card={board.st3} label="S/T3" outlineColor="border-emerald-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              </div>
+            </div>
+
+            {/* Right: GRAVE & BANISH Vertical Rectangle Stacked Piles */}
+            <div className="flex gap-2.5">
+              <VerticalStackPileZone zone={ZONES.GY} cards={board.gy} label="GRAVE" color="var(--color-accent-rose)" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              <VerticalStackPileZone zone={ZONES.BANISH} cards={board.banish} label="BANISH" color="var(--color-accent-blue)" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            </div>
 
           </div>
         </div>
@@ -197,7 +218,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
         </div>
       </div>
 
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeCard?.data ? (
           <img src={getCardImageUrl(activeCard.data.id || activeCard.cardId, 'small')} alt="" className="card-thumbnail opacity-85 rotate-2 shadow-2xl" />
         ) : null}
@@ -253,7 +274,7 @@ function VerticalStackPileZone({ zone, cards, label, color, highlightedCardId, o
   return (
     <div
       ref={setNodeRef}
-      className={`relative w-[70px] min-h-[90px] max-h-[160px] rounded-lg border-2 border-dashed flex flex-col p-1 overflow-y-auto transition-all duration-200 shadow-inner ${
+      className={`relative w-[72px] h-[185px] rounded-lg border-2 border-dashed flex flex-col p-1 overflow-y-auto transition-all duration-200 shadow-inner ${
         isOver
           ? 'border-[var(--color-gold-400)] bg-[var(--color-gold-500)]/15 scale-105 z-30'
           : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/40'
@@ -285,41 +306,6 @@ function VerticalStackPileZone({ zone, cards, label, color, highlightedCardId, o
               />
             </div>
           ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function PileZone({ zone, cards, label, color, highlightedCardId, onContextMenu, onSelectCard, onHoverCard }) {
-  const { setNodeRef, isOver } = useDroppable({ id: zone })
-  const topCard = cards[cards.length - 1]
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`relative w-[64px] h-[86px] rounded-lg border-2 border-dashed flex flex-col items-center justify-center transition-all duration-200
-        ${isOver ? 'border-[var(--color-gold-400)] bg-[var(--color-gold-500)]/10 scale-105' : `border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/40`}`}
-      style={{ borderColor: isOver ? undefined : color }}
-    >
-      {topCard ? (
-        <div className="relative w-full h-full flex items-center justify-center">
-          <DraggableCard
-            card={topCard}
-            zone={zone}
-            isHighlighted={topCard.id === highlightedCardId}
-            onContextMenu={onContextMenu}
-            onClick={() => onSelectCard?.(topCard.data)}
-            onMouseEnter={() => onHoverCard?.(topCard.data)}
-          />
-          <span className="absolute bottom-0.5 right-0.5 px-1 bg-black/80 text-[9px] font-bold text-white rounded shadow border border-white/20">
-            {cards.length}
-          </span>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center">
-          <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color }}>{label}</span>
-          <span className="text-[8px] text-[var(--color-text-muted)]">0</span>
         </div>
       )}
     </div>
