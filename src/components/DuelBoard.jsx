@@ -227,12 +227,28 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 px-3 py-1.5 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50">
           <div className="col-span-1 border border-dashed border-[var(--color-accent-blue)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5">
             <div className="text-[10px] font-bold text-[var(--color-accent-blue)] mb-0.5 uppercase tracking-wider">Hand ({board.hand.length})</div>
-            <HandZone cards={board.hand} effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            {/* <HandZone cards={board.hand} effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} /> */}
+            <HorizontalStackPileZone
+              zone={ZONES.HAND}
+              cards={board.hand}
+              effectCardId={effectCardId}
+              onContextMenu={handleContextMenu}
+              onSelectCard={onSelectCard}
+              onHoverCard={onHoverCard}
+            />
           </div>
 
           <div className="col-span-2 border border-dashed border-[var(--color-accent-purple)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5">
             <div className="text-[10px] font-bold text-[var(--color-accent-purple)] mb-0.5 uppercase tracking-wider">Extra Deck ({board.extra.length})</div>
-            <ExtraDeckZone cards={board.extra} effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            {/* <ExtraDeckZone cards={board.extra} effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} /> */}
+            <HorizontalStackPileZone
+              zone={ZONES.EXTRA}
+              cards={board.extra}
+              effectCardId={effectCardId}
+              onContextMenu={handleContextMenu}
+              onSelectCard={onSelectCard}
+              onHoverCard={onHoverCard}
+            />
           </div>
         </div>
 
@@ -250,7 +266,15 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
                 </button>
               </div>
             </div>
-            <DeckZone cards={board.deck} effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+            {/* <DeckZone cards={board.deck} effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} /> */}
+            <HorizontalStackPileZone
+              zone={ZONES.DECK}
+              cards={board.deck}
+              effectCardId={effectCardId}
+              onContextMenu={handleContextMenu}
+              onSelectCard={onSelectCard}
+              onHoverCard={onHoverCard}
+            />
           </div>
         </div>
       </div>
@@ -325,6 +349,76 @@ function BoardZone({ zone, card, label, outlineColor, effectCardId, onContextMen
     </div>
   )
 }
+function HorizontalStackPileZone({
+  zone,
+  cards,
+  effectCardId,
+  onContextMenu,
+  onSelectCard,
+  onHoverCard,
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: zone })
+
+  const [hoveredCardId, setHoveredCardId] = useState(null)
+
+  const cardWidth = 56
+  const availableWidth = 1100 // adjust to your container
+  const gap = 3
+
+  let stepOffset = cardWidth + gap
+
+  if (cards.length > 1) {
+    const requiredWidth = cardWidth * cards.length
+
+    if (requiredWidth > availableWidth) {
+      stepOffset = Math.max(
+        8,
+        Math.floor((availableWidth - cardWidth) / (cards.length - 1))
+      )
+    }
+  }
+
+  const overlapMargin = stepOffset - cardWidth
+
+  return (
+    <div
+      ref={setNodeRef}
+      id={`zone-${zone}`}
+      className={`relative flex items-start min-h-[78px] overflow-hidden transition-colors duration-200 ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''
+        }`}
+    >
+      {cards.length === 0 ? (
+        <span className="m-auto text-[10px] text-[var(--color-text-muted)] font-mono">
+          Empty
+        </span>
+      ) : (
+        cards.map((card, idx) => (
+          <div
+            key={card.id}
+            className="relative transition-all duration-200"
+            style={{
+              marginLeft: idx === 0 ? 0 : overlapMargin,
+              zIndex: hoveredCardId === card.id ? 999 : idx + 1,
+            }}
+          >
+            <DraggableCard
+              card={card}
+              zone={zone}
+              isEffectActivated={card.id === effectCardId}
+              onContextMenu={onContextMenu}
+              onClick={() => onSelectCard?.(card.data)}
+              onMouseEnter={() => {
+                setHoveredCardId(card.id)
+                onHoverCard?.(card.data)
+              }}
+              onMouseLeave={() => setHoveredCardId(null)}
+            />
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
 
 function VerticalStackPileZone({ zone, cards, label, color, effectCardId, onContextMenu, onSelectCard, onHoverCard }) {
   const { setNodeRef, isOver } = useDroppable({ id: zone })
@@ -333,7 +427,7 @@ function VerticalStackPileZone({ zone, cards, label, color, effectCardId, onCont
   const availableHeight = 210 // space available for cards
   const cardHeight = 86
 
-  let stepOffset = cardHeight
+  let stepOffset = cardHeight + 1
   const cardCount = cards.length
 
   if (cardCount > 1) {
