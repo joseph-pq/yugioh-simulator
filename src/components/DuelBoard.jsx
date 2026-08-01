@@ -5,8 +5,9 @@ import { getCardImageUrl } from '../services/ygoproApi'
 import CardContextMenu from './CardContextMenu'
 
 /**
- * Main Duel Board — Exact Duel Links Field Layout matching user reference:
- * FREE (left) | FIELD & EXTRA (col 2) | EMZs, Monsters, S/T (center) | GRAVE & BANISH (right)
+ * Main Duel Board — Exact Duel Links Field Layout with:
+ * - Animated flying card drag movement during combo record playback
+ * - Vertical Stacked Piles for Grave & Banish with height expansion (no scrollbars), negative margin overlapping, and exposed card selection
  */
 export default function DuelBoard({ onSelectCard, onHoverCard }) {
   const game = useGame()
@@ -14,18 +15,56 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
   const [contextMenu, setContextMenu] = useState(null)
   const [activeCard, setActiveCard] = useState(null)
   const [highlightedCardId, setHighlightedCardId] = useState(null)
+  const [flyingCard, setFlyingCard] = useState(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
 
-  // Highlight active step's card when playbackIndex changes during record playback
+  // Animated Flying Drag Movement during Record Playback
   useEffect(() => {
     if (game.playbackIndex >= 0 && game.combo[game.playbackIndex]) {
       const step = game.combo[game.playbackIndex]
       const cardId = step.i || step.instanceId
+      const fromZone = step.f || step.from
+      const toZone = step.t || step.to
+
       if (cardId) {
         setHighlightedCardId(cardId)
+
+        // Calculate source and target coordinates for flying drag animation
+        if (fromZone && toZone && fromZone !== toZone) {
+          const fromEl = document.getElementById(`zone-${fromZone}`)
+          const toEl = document.getElementById(`zone-${toZone}`)
+
+          if (fromEl && toEl) {
+            const startRect = fromEl.getBoundingClientRect()
+            const endRect = toEl.getBoundingClientRect()
+            const cardImgId = step.cardId || step.card?.id || 99999999
+
+            setFlyingCard({
+              id: cardId,
+              cardId: cardImgId,
+              start: { x: startRect.left + startRect.width / 2 - 25, y: startRect.top + startRect.height / 2 - 35 },
+              end: { x: endRect.left + endRect.width / 2 - 25, y: endRect.top + endRect.height / 2 - 35 },
+              animating: false,
+            })
+
+            const animTimer = setTimeout(() => {
+              setFlyingCard(prev => prev ? { ...prev, animating: true } : null)
+            }, 20)
+
+            const endTimer = setTimeout(() => {
+              setFlyingCard(null)
+            }, 550)
+
+            return () => {
+              clearTimeout(animTimer)
+              clearTimeout(endTimer)
+            }
+          }
+        }
+
         const timer = setTimeout(() => setHighlightedCardId(null), 1000)
         return () => clearTimeout(timer)
       }
@@ -154,7 +193,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
             />
 
             {/* Left Column 2: FIELD (Top) & EXTRA (Bottom) */}
-            <div className="flex flex-col justify-between gap-3 h-[185px]">
+            <div className="flex flex-col justify-between gap-3 h-[255px]">
               <BoardZone zone={ZONES.FIELD} card={board.field} label="FIELD" outlineColor="border-yellow-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
               <BoardZone zone={ZONES.EXTRA_PILE} card={board.extra_pile} label="EXTRA" outlineColor="border-slate-600/50" highlightedCardId={highlightedCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
             </div>
@@ -218,11 +257,31 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
         </div>
       </div>
 
+      {/* Manual Drag Overlay */}
       <DragOverlay dropAnimation={null}>
         {activeCard?.data ? (
           <img src={getCardImageUrl(activeCard.data.id || activeCard.cardId, 'small')} alt="" className="card-thumbnail opacity-85 rotate-2 shadow-2xl" />
         ) : null}
       </DragOverlay>
+
+      {/* Animated Flying Drag Overlay during Record Playback */}
+      {flyingCard && (
+        <div
+          className="fixed z-[999] pointer-events-none transition-all duration-500 ease-in-out transform-gpu shadow-2xl rounded"
+          style={{
+            left: `${flyingCard.animating ? flyingCard.end.x : flyingCard.start.x}px`,
+            top: `${flyingCard.animating ? flyingCard.end.y : flyingCard.start.y}px`,
+            width: '56px',
+            height: '80px',
+          }}
+        >
+          <img
+            src={getCardImageUrl(flyingCard.cardId, 'small')}
+            alt=""
+            className="w-full h-full object-cover rounded border-2 border-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.95)]"
+          />
+        </div>
+      )}
 
       {contextMenu && (
         <CardContextMenu
@@ -246,6 +305,7 @@ function BoardZone({ zone, card, label, outlineColor, highlightedCardId, onConte
   return (
     <div
       ref={setNodeRef}
+      id={`zone-${zone}`}
       className={`relative w-[64px] h-[86px] rounded-lg border-2 border-dashed flex items-center justify-center transition-all duration-200
         ${isOver ? 'border-[var(--color-gold-400)] bg-[var(--color-gold-500)]/10 scale-105' : `${outlineColor || 'border-[var(--color-border)]'} bg-[var(--color-bg-tertiary)]/50`}
         ${card ? 'border-solid' : ''}`}
@@ -274,28 +334,36 @@ function VerticalStackPileZone({ zone, cards, label, color, highlightedCardId, o
   return (
     <div
       ref={setNodeRef}
-      className={`relative w-[72px] h-[185px] rounded-lg border-2 border-dashed flex flex-col p-1 overflow-y-auto transition-all duration-200 shadow-inner ${
+      id={`zone-${zone}`}
+      className={`relative w-[74px] h-[255px] rounded-lg border-2 border-dashed flex flex-col p-1 transition-all duration-200 shadow-inner ${
         isOver
-          ? 'border-[var(--color-gold-400)] bg-[var(--color-gold-500)]/15 scale-105 z-30'
+          ? 'border-[var(--color-gold-400)] bg-[var(--color-gold-500)]/15 scale-105 z-40'
           : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/40'
       }`}
       style={{ borderColor: isOver ? undefined : color }}
     >
       {/* Zone Title Header */}
-      <div className="flex items-center justify-between mb-1 px-1 border-b border-[var(--color-border)]/50 pb-0.5 sticky top-0 bg-[var(--color-bg-secondary)]/90 z-20 rounded">
+      <div className="flex items-center justify-between mb-1 px-1 border-b border-[var(--color-border)]/50 pb-0.5 sticky top-0 bg-[var(--color-bg-secondary)]/95 z-30 rounded">
         <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color }}>{label}</span>
         <span className="text-[9px] font-mono font-extrabold text-[var(--color-text-primary)]">{cards.length}</span>
       </div>
 
       {cards.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-[8px] text-[var(--color-text-muted)] font-mono py-4">
+        <div className="flex-1 flex items-center justify-center text-[8px] text-[var(--color-text-muted)] font-mono">
           Empty
         </div>
       ) : (
-        /* Vertical Stack with Spacing between stacked cards */
-        <div className="relative flex flex-col gap-1 pb-1">
-          {cards.map((card) => (
-            <div key={card.id} className="relative flex flex-col items-center">
+        /* Vertical Stack Cascade with spacing between stacked cards without scroll */
+        <div className="relative flex flex-col items-center w-full flex-1 pt-1 overflow-hidden">
+          {cards.map((card, idx) => (
+            <div
+              key={card.id}
+              className="relative transition-all"
+              style={{
+                marginTop: idx === 0 ? '0px' : '-58px',
+                zIndex: idx + 1,
+              }}
+            >
               <DraggableCard
                 card={card}
                 zone={zone}
@@ -318,6 +386,7 @@ function HandZone({ cards, highlightedCardId, onContextMenu, onSelectCard, onHov
   return (
     <div
       ref={setNodeRef}
+      id={`zone-${ZONES.HAND}`}
       className={`flex flex-wrap gap-1 p-0.5 min-h-[78px] transition-colors duration-200 ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''}`}
     >
       {cards.length === 0 ? (
@@ -345,6 +414,7 @@ function ExtraDeckZone({ cards, highlightedCardId, onContextMenu, onSelectCard, 
   return (
     <div
       ref={setNodeRef}
+      id={`zone-${ZONES.EXTRA}`}
       className={`flex flex-wrap gap-1 p-0.5 min-h-[78px] transition-colors duration-200 ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''}`}
     >
       {cards.length === 0 ? (
@@ -372,6 +442,7 @@ function DeckZone({ cards, highlightedCardId, onContextMenu, onSelectCard, onHov
   return (
     <div
       ref={setNodeRef}
+      id={`zone-${ZONES.DECK}`}
       className={`flex flex-wrap gap-1 p-0.5 min-h-[78px] max-h-[180px] overflow-y-auto transition-colors duration-200 ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''}`}
     >
       {cards.length === 0 ? (
@@ -405,7 +476,7 @@ function DraggableCard({ card, zone, isFaceDown, isDefense, isHighlighted, onCon
       {...attributes}
       {...listeners}
       className={`relative cursor-grab active:cursor-grabbing transition-all duration-300 ease-out flex-shrink-0 rounded transform-gpu
-        ${isDragging ? 'opacity-30 scale-90' : 'hover:scale-105 hover:z-10'}
+        ${isDragging ? 'opacity-30 scale-90' : 'hover:scale-110 hover:z-50 shadow-md'}
         ${isDefense ? 'rotate-90' : ''}
         ${isHighlighted ? 'ring-4 ring-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.9)] scale-110 z-50 animate-pulse' : ''}`}
       onContextMenu={(e) => onContextMenu(e, card, zone)}

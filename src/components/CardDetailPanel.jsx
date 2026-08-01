@@ -146,7 +146,7 @@ function renderFormattedDescription(desc) {
     .filter(Boolean)
 
   return (
-    <div className="space-y-3 text-xs text-[var(--color-text-secondary)] leading-relaxed font-sans">
+    <div className="space-y-5 text-xs text-[var(--color-text-secondary)] leading-relaxed font-sans">
       {rawBlocks.map((block, pIdx) => {
         const sentences = block
           .split(/\.\s+(?=[A-Z0-9①-⑩\(\(])/g)
@@ -154,7 +154,7 @@ function renderFormattedDescription(desc) {
           .filter(Boolean)
 
         return (
-          <div key={pIdx} className="space-y-1">
+          <div key={pIdx} className="space-y-1.5 pb-3 border-b border-[var(--color-border)]/40 last:border-b-0 last:pb-0">
             {sentences.map((sentence, sIdx) => {
               const formattedText = sentence.endsWith('.') || sentence.endsWith(':') || sentence.endsWith(';') ? sentence : sentence + '.'
               return (
