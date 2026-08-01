@@ -22,6 +22,8 @@ export function useGame() {
 export const ZONES = {
   HAND: 'hand',
   M1: 'm1', M2: 'm2', M3: 'm3',
+  EST1: 'est1', EST2: 'est2', EST3: 'est3',
+  EM1: 'em1', EM2: 'em2', EM3: 'em3',
   ST1: 'st1', ST2: 'st2', ST3: 'st3',
   FIELD: 'field',
   GY: 'gy',
@@ -53,6 +55,8 @@ function createEmptyBoard() {
   return {
     hand: [],         // array of { id, cardId, data }
     m1: null, m2: null, m3: null,
+    est1: null, est2: null, est3: null,
+    em1: null, em2: null, em3: null,
     st1: null, st2: null, st3: null,
     field: null,
     gy: [],
