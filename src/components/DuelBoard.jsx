@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { useGame, ZONES, POSITION, MONSTER_ZONES, SPELL_ZONES } from '../context/GameContext'
 import { getCardImageUrl } from '../services/ygoproApi'
@@ -19,6 +19,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
   const [effectCardId, setEffectCardId] = useState(null) // Glow ONLY when effect is activated
   const [skillActive, setSkillActive] = useState(false)
   const [flyingCard, setFlyingCard] = useState(null)
+  const playbackGlowTimers = useRef({ effect: null, skill: null })
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -63,6 +64,42 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
           }
         }
       }
+    }
+  }, [game.playbackIndex, game.combo])
+
+  useEffect(() => {
+    clearTimeout(playbackGlowTimers.current.effect)
+    clearTimeout(playbackGlowTimers.current.skill)
+
+    const step = game.playbackIndex >= 0 ? game.combo[game.playbackIndex] : null
+
+    if (!step) {
+      setEffectCardId(null)
+      setSkillActive(false)
+      return undefined
+    }
+
+    if (step.a === 'effect') {
+      const cardId = step.i || step.instanceId
+      setSkillActive(false)
+      if (cardId) {
+        setEffectCardId(cardId)
+        playbackGlowTimers.current.effect = setTimeout(() => setEffectCardId(null), 1200)
+      } else {
+        setEffectCardId(null)
+      }
+    } else if (step.a === 'skill') {
+      setEffectCardId(null)
+      setSkillActive(true)
+      playbackGlowTimers.current.skill = setTimeout(() => setSkillActive(false), 1200)
+    } else {
+      setEffectCardId(null)
+      setSkillActive(false)
+    }
+
+    return () => {
+      clearTimeout(playbackGlowTimers.current.effect)
+      clearTimeout(playbackGlowTimers.current.skill)
     }
   }, [game.playbackIndex, game.combo])
 
