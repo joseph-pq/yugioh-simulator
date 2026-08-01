@@ -329,18 +329,26 @@ function BoardZone({ zone, card, label, outlineColor, effectCardId, onContextMen
 function VerticalStackPileZone({ zone, cards, label, color, effectCardId, onContextMenu, onSelectCard, onHoverCard }) {
   const { setNodeRef, isOver } = useDroppable({ id: zone })
 
-  const cardCount = cards.length
-  // Available vertical height span inside 255px container (210px for cards)
-  const availableSpan = 155
+  const availableHeight = 210 // space available for cards
   const cardHeight = 86
-  const defaultStep = 26
 
-  // Calculate dynamic step offset so ALL cards always fit cleanly inside the placeholder
-  const stepOffset = cardCount > 1
-    ? Math.max(4, Math.min(defaultStep, Math.floor(availableSpan / (cardCount - 1))))
-    : defaultStep
+  let stepOffset = cardHeight
+  const cardCount = cards.length
 
-  const overlapMargin = -(cardHeight - stepOffset)
+  if (cardCount > 1) {
+    // Total height if cards don't overlap
+    const requiredHeight = cardHeight * cardCount
+
+    if (requiredHeight > availableHeight) {
+      // Compress spacing only when we run out of room
+      stepOffset = Math.max(
+        4,
+        Math.floor((availableHeight - cardHeight) / (cardCount - 1))
+      )
+    }
+  }
+
+  const overlapMargin = stepOffset - cardHeight
 
   return (
     <div
