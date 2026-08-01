@@ -328,6 +328,7 @@ function BoardZone({ zone, card, label, outlineColor, effectCardId, onContextMen
 
 function VerticalStackPileZone({ zone, cards, label, color, effectCardId, onContextMenu, onSelectCard, onHoverCard }) {
   const { setNodeRef, isOver } = useDroppable({ id: zone })
+  const [hoveredCardId, setHoveredCardId] = useState(null)
 
   const availableHeight = 210 // space available for cards
   const cardHeight = 86
@@ -379,7 +380,8 @@ function VerticalStackPileZone({ zone, cards, label, color, effectCardId, onCont
               className="relative transition-all duration-200"
               style={{
                 marginTop: idx === 0 ? '0px' : `${overlapMargin}px`,
-                zIndex: idx + 1,
+                zIndex: hoveredCardId === card.id ? 999 : idx + 1,
+
               }}
             >
               <DraggableCard
@@ -388,7 +390,11 @@ function VerticalStackPileZone({ zone, cards, label, color, effectCardId, onCont
                 isEffectActivated={card.id === effectCardId}
                 onContextMenu={onContextMenu}
                 onClick={() => onSelectCard?.(card.data)}
-                onMouseEnter={() => onHoverCard?.(card.data)}
+                onMouseEnter={() => {
+                  setHoveredCardId(card.id)
+                  onHoverCard?.(card.data)
+                }}
+                onMouseLeave={() => setHoveredCardId(null)}
               />
             </div>
           ))}
@@ -482,7 +488,7 @@ function DeckZone({ cards, effectCardId, onContextMenu, onSelectCard, onHoverCar
   )
 }
 
-function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, onContextMenu, onClick, onMouseEnter }) {
+function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, onContextMenu, onClick, onMouseEnter, onMouseLeave }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${zone}-${card.id}`,
     data: { instanceId: card.id, cardId: card.cardId, fromZone: zone, data: card.data },
@@ -500,6 +506,7 @@ function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, o
       onContextMenu={(e) => onContextMenu(e, card, zone)}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <img
         src={getCardImageUrl(card.cardId, 'small')}
