@@ -241,9 +241,14 @@ export default function DuelBoard({ onSelectCard, onHoverCard }) {
           <div className="border border-dashed border-[var(--color-text-muted)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5">
             <div className="text-[10px] font-bold text-[var(--color-text-muted)] mb-1 uppercase tracking-wider flex items-center justify-between">
               <span>Main Deck ({board.deck.length})</span>
-              <button onClick={game.shuffleDeck} className="px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[9px] hover:bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] border border-[var(--color-border)] transition-colors">
-                🔀 Shuffle Deck
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={game.shuffleDeck} className="px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[9px] hover:bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] border border-[var(--color-border)] transition-colors">
+                  🔀 Shuffle Deck
+                </button>
+                <button onClick={game.sortDeck} className="px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[9px] hover:bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] border border-[var(--color-border)] transition-colors">
+                  📶 Sort Deck
+                </button>
+              </div>
             </div>
             <DeckZone cards={board.deck} effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
           </div>

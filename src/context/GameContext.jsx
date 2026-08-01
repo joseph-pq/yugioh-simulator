@@ -2,6 +2,14 @@ import { createContext, useContext, useState, useCallback, useRef, useEffect } f
 
 const GameContext = createContext(null)
 
+const getOrderValue = (card) => {
+  if (!card || !card.type) return 0
+  const type = card.type.toLowerCase()
+  if (type.includes('spell')) return 2
+  if (type.includes('trap')) return 3
+  return 1 // monster or other types
+}
+
 export function useGame() {
   const ctx = useContext(GameContext)
   if (!ctx) throw new Error('useGame must be used within GameProvider')
@@ -352,6 +360,7 @@ export function GameProvider({ children }) {
     initBoard,
     draw,
     shuffleDeck,
+    sortDeck,
     moveCard,
     changePosition,
     setLP,
