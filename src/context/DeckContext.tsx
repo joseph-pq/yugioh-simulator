@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 import { validateDuelLinksDeck } from '../utils/ydkParser'
+import type { CardData, DeckContextValue, DeckValidationResult } from '../types'
 
-const DeckContext = createContext(null)
+const DeckContext = createContext<DeckContextValue | null>(null)
 
 export function useDeck() {
   const ctx = useContext(DeckContext)
@@ -9,19 +10,19 @@ export function useDeck() {
   return ctx
 }
 
-export function DeckProvider({ children }) {
+export function DeckProvider({ children }: { children: ReactNode }) {
   const [deckName, setDeckName] = useState('')
-  const [mainDeck, setMainDeck] = useState([])   // array of card IDs (numbers)
-  const [extraDeck, setExtraDeck] = useState([])  // array of card IDs (numbers)
-  const [validation, setValidation] = useState({ valid: true, errors: [], warnings: [] })
+  const [mainDeck, setMainDeck] = useState<number[]>([])
+  const [extraDeck, setExtraDeck] = useState<number[]>([])
+  const [validation, setValidation] = useState<DeckValidationResult>({ valid: true, errors: [], warnings: [] })
 
-  const revalidate = useCallback((main, extra) => {
+  const revalidate = useCallback((main: number[], extra: number[]) => {
     const result = validateDuelLinksDeck({ main, extra })
     setValidation(result)
     return result
   }, [])
 
-  const addToMainDeck = useCallback((cardId) => {
+  const addToMainDeck = useCallback((cardId: number) => {
     setMainDeck(prev => {
       const next = [...prev, cardId]
       revalidate(next, extraDeck)
@@ -29,7 +30,7 @@ export function DeckProvider({ children }) {
     })
   }, [extraDeck, revalidate])
 
-  const addToExtraDeck = useCallback((cardId) => {
+  const addToExtraDeck = useCallback((cardId: number) => {
     setExtraDeck(prev => {
       const next = [...prev, cardId]
       revalidate(mainDeck, next)
@@ -37,7 +38,7 @@ export function DeckProvider({ children }) {
     })
   }, [mainDeck, revalidate])
 
-  const removeFromMainDeck = useCallback((index) => {
+  const removeFromMainDeck = useCallback((index: number) => {
     setMainDeck(prev => {
       const next = prev.filter((_, i) => i !== index)
       revalidate(next, extraDeck)
@@ -45,7 +46,7 @@ export function DeckProvider({ children }) {
     })
   }, [extraDeck, revalidate])
 
-  const removeFromExtraDeck = useCallback((index) => {
+  const removeFromExtraDeck = useCallback((index: number) => {
     setExtraDeck(prev => {
       const next = prev.filter((_, i) => i !== index)
       revalidate(mainDeck, next)
@@ -53,13 +54,11 @@ export function DeckProvider({ children }) {
     })
   }, [mainDeck, revalidate])
 
-  const addCard = useCallback((card) => {
-    // Auto-detect if card goes to main or extra deck
+  const addCard = useCallback((card: CardData) => {
     const isExtra = ['Fusion Monster', 'Synchro Monster', 'XYZ Monster', 'Link Monster'].some(
-      t => card.type?.includes(t) || card.humanType?.includes(t)
+      t => card.type?.includes(t) || card.humanType?.includes(t),
     )
 
-    // Check copy count (max 3)
     const allIds = [...mainDeck, ...extraDeck]
     const currentCount = allIds.filter(id => id === card.id).length
     if (currentCount >= 3) return false
@@ -74,7 +73,7 @@ export function DeckProvider({ children }) {
     return true
   }, [mainDeck, extraDeck, addToMainDeck, addToExtraDeck])
 
-  const importDeck = useCallback((parsed) => {
+  const importDeck = useCallback((parsed: { main?: number[]; extra?: number[] }) => {
     setMainDeck(parsed.main || [])
     setExtraDeck(parsed.extra || [])
     revalidate(parsed.main || [], parsed.extra || [])
@@ -87,11 +86,11 @@ export function DeckProvider({ children }) {
     setValidation({ valid: true, errors: [], warnings: [] })
   }, [])
 
-  const getCardCount = useCallback((cardId) => {
+  const getCardCount = useCallback((cardId: number) => {
     return [...mainDeck, ...extraDeck].filter(id => id === cardId).length
   }, [mainDeck, extraDeck])
 
-  const value = {
+  const value: DeckContextValue = {
     deckName,
     setDeckName,
     mainDeck,

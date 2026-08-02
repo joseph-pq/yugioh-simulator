@@ -1,7 +1,8 @@
-import { createContext, useContext, useCallback } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { getCachedCardCount, searchLocalCards, getCard, getCards, fetchAndCacheCards } from '../services/cardCache'
+import type { CardData, CardFilter, CacheContextValue } from '../types'
 
-const CacheContext = createContext(null)
+const CacheContext = createContext<CacheContextValue | null>(null)
 
 export function useCacheContext() {
   const ctx = useContext(CacheContext)
@@ -9,15 +10,13 @@ export function useCacheContext() {
   return ctx
 }
 
-export function CacheProvider({ children }) {
-  // No bulk download needed — cards are fetched on-demand when importing decks
-
-  const searchCards = useCallback(async (query, filters, limit) => {
+export function CacheProvider({ children }: { children: ReactNode }) {
+  const searchCards = async (query: string, filters: CardFilter, limit = 30): Promise<CardData[]> => {
     return searchLocalCards(query, filters, limit)
-  }, [])
+  }
 
-  const value = {
-    cacheStatus: 'ready', // Always ready — no bulk download
+  const value: CacheContextValue = {
+    cacheStatus: 'ready',
     progress: { fetched: 0, total: 0 },
     totalCards: 0,
     error: null,
@@ -28,8 +27,10 @@ export function CacheProvider({ children }) {
   }
 
   return (
-    <CacheContext.Provider value={value}>
+    <CacheContext.Provider value={value} >
       {children}
     </CacheContext.Provider>
   )
 }
+
+export { getCachedCardCount }
