@@ -204,13 +204,20 @@ export default function SimulatorPage() {
 
     collectIds('hand')
     collectIds('gy')
+    collectIds('egy')
+    collectIds('ebanish')
     collectIds('banish')
     collectIds('deck')
     collectIds('extra')
+    collectIds('eextra')
     collectIds('free')
+    collectIds('efree')
     collectIds('m1'); collectIds('m2'); collectIds('m3')
+    collectIds('em1'); collectIds('em2'); collectIds('em3')
     collectIds('st1'); collectIds('st2'); collectIds('st3')
+    collectIds('est1'); collectIds('est2'); collectIds('est3')
     collectIds('field')
+    collectIds('efield')
 
     const state = {
       main: mainIds.length > 0 ? mainIds : mainDeck,
