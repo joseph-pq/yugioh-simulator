@@ -127,8 +127,11 @@ body {
   cursor: pointer;
 }
 
+/* .card-thumbnail:hover { */
+/*   transform: translateY(-4px) scale(1.05); */
+/*   box-shadow: var(--shadow-card-hover); */
+/* } */
 .card-thumbnail:hover {
-  transform: translateY(-4px) scale(1.05);
   box-shadow: var(--shadow-card-hover);
 }
 

@@ -64,7 +64,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   }>({ effect: null, skill: null })
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 1 } })
   )
 
   // Animated Flying Drag Movement during Record Playback
@@ -440,7 +440,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
       {/* Manual Drag Overlay */}
       <DragOverlay dropAnimation={null}>
         {activeCard?.data ? (
-          <img src={getCardImageUrl(activeCard.data.id || activeCard.cardId, 'small')} alt="" className="card-thumbnail opacity-85 rotate-2 shadow-2xl" />
+          <img src={getCardImageUrl(activeCard.data.id || activeCard.cardId, 'small')} alt="" className="card-thumbnail opacity-85 shadow-2xl" />
         ) : null}
       </DragOverlay>
 
@@ -513,6 +513,7 @@ function BoardZone({ zone, card, label, outlineColor, effectCardId, hiddenCardId
           onContextMenu={onContextMenu}
           onClick={() => onSelectCard?.(card.data || undefined)}
           onMouseEnter={() => onHoverCard?.(card.data || undefined)}
+          hoverDirection='up'
         />
       ) : (
         <span className="text-[9px] text-[var(--color-text-muted)] font-bold font-sans uppercase tracking-wider">{label}</span>
@@ -596,6 +597,7 @@ function HorizontalStackPileZone({
                 onHoverCard?.(card.data || undefined)
               }}
               onMouseLeave={() => setHoveredCardId(null)}
+              hoverDirection='up'
             />
           </div>
         ))
@@ -685,6 +687,7 @@ function VerticalStackPileZone({ zone, cards, label, color, effectCardId, hidden
                   onHoverCard?.(card.data || undefined)
                 }}
                 onMouseLeave={() => setHoveredCardId(null)}
+                hoverDirection='left'
               />
             </div>
           ))}
@@ -719,17 +722,22 @@ interface DraggableCardProps {
   isFaceDown?: boolean
   isDefense?: boolean
   isEffectActivated?: boolean
+  hoverDirection: string
   onContextMenu: (e: React.MouseEvent, card: CardInstance, zone: string) => void
   onClick?: () => void
   onMouseEnter?: () => void
   onMouseLeave?: () => void
 }
 
-function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, onContextMenu, onClick, onMouseEnter, onMouseLeave }: DraggableCardProps) {
+function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, onContextMenu, onClick, onMouseEnter, onMouseLeave, hoverDirection = 'up' }: DraggableCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${zone}-${card.id}`,
     data: { instanceId: card.id, cardId: card.cardId, fromZone: zone, data: card.data },
   })
+  const hoverDirectionContent =
+    hoverDirection === 'left'
+      ? '-translate-x-3'
+      : '-translate-y-3'
 
   return (
     <div
@@ -737,7 +745,7 @@ function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, o
       {...attributes}
       {...listeners}
       className={`relative cursor-grab active:cursor-grabbing transition-all duration-200 ease-out flex-shrink-0 rounded transform-gpu
-        ${isDragging ? 'opacity-30 scale-90' : 'hover:scale-110 hover:z-50 shadow-md'}
+        ${isDragging ? `${hoverDirectionContent} opacity-40` : `hover:${hoverDirectionContent} hover:z-50`}
         ${isDefense ? 'rotate-90' : ''}
         ${isEffectActivated ? 'ring-4 ring-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.95)] scale-110 z-50 animate-pulse' : ''}`}
       onContextMenu={(e) => onContextMenu(e, card, zone)}
