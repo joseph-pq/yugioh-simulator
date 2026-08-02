@@ -57,7 +57,7 @@ export function pushStateToUrl(state: ShareableState): void {
 }
 
 export function readStateFromUrl(): ShareableState | null {
-  const hash = window.location.hash
+  const hash = window.location.hash.startsWith('#/sim') ? window.location.hash.slice(5) : window.location.hash
   if (!hash || !hash.startsWith('#d=')) return null
   const compressed = hash.slice(3)
   return decodeState(compressed)
@@ -69,6 +69,9 @@ export function generateShareUrl(state: ShareableState): string {
   let pathname = window.location.pathname
   if (!pathname.endsWith('/sim') && !pathname.endsWith('/sim/')) {
     pathname = pathname.replace(/\/$/, '') + '/sim'
+  }
+  if (origin.includes('localhost')) {
+    pathname = '/#' + pathname
   }
   return `${origin}${pathname}#d=${compressed}`
 }

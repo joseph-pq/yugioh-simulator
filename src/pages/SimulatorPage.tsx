@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import type { CardInstance, CardData } from '../types'
 import { useLocation } from 'react-router'
 import { useGame } from '../context/GameContext'
 import { readStateFromUrl, pushStateToUrl, generateShareUrl } from '../services/urlState'
@@ -11,16 +12,16 @@ import ComboStepList from '../components/ComboStepList'
 export default function SimulatorPage() {
   const game = useGame()
   const location = useLocation()
-  const [selectedCard, setSelectedCard] = useState(null)
+  const [selectedCard, setSelectedCard] = useState<CardData | undefined | null>(undefined)
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
-  const [toast, setToast] = useState(null)
+  const [toast, setToast] = useState<{ msg: string, type: string } | null>(null)
   const [deckName, setDeckName] = useState('')
-  const [mainDeck, setMainDeck] = useState([])
-  const [extraDeck, setExtraDeck] = useState([])
-  const fileInputRef = useRef(null)
+  const [mainDeck, setMainDeck] = useState<number[]>([])
+  const [extraDeck, setExtraDeck] = useState<number[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const showToast = useCallback((msg, type = 'info') => {
+  const showToast = useCallback((msg: string, type: string = 'info') => {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 3000)
   }, [])
@@ -31,7 +32,7 @@ export default function SimulatorPage() {
       try {
         setLoading(true)
         const hash = window.location.hash
-        if (hash && hash.length > 2) {
+        if (hash && hash.length > 5) {
           const state = readStateFromUrl()
           if (state) {
             setDeckName(state.name || '')
@@ -41,7 +42,7 @@ export default function SimulatorPage() {
             // Fetch card data for all unique IDs in state
             const allIds = [...(state.main || []), ...(state.extra || [])]
             const cards = await fetchAndCacheCards(allIds)
-            const map = {
+            const map: Record<number | string, any> = {
               99999999: {
                 id: 99999999,
                 name: 'Monster Token',
@@ -51,34 +52,37 @@ export default function SimulatorPage() {
                 desc: 'Monster Token',
               }
             }
-            cards.forEach(c => {
-              if (c) {
-                map[c.id] = c
-                map[String(c.id)] = c
+            cards.forEach(card => {
+              if (card) {
+                map[card.id] = card
+                map[String(card.id)] = card
               }
             })
 
             game.initBoard(state.main || [], state.extra || [], map)
+            console.log('Reconstructing history from combo steps:', state.combo)
 
             // Reconstruct history if combo steps are present
             if (state.combo && state.combo.length > 0) {
               const fullHistory = [JSON.parse(JSON.stringify(game.board))]
+              console.log('full history:', fullHistory)
               let currentBoard = JSON.parse(JSON.stringify(game.board))
+              console.log('current board:', currentBoard)
 
               state.combo.forEach(step => {
                 const next = JSON.parse(JSON.stringify(currentBoard))
                 const action = step.a
                 const fromZone = step.from || step.f
-                const toZone = step.to || step.t
+                const toZone = step.to
                 const instanceId = step.instanceId || step.i
                 const position = step.position || step.p
                 const val = step.val !== undefined ? step.val : step.v
-                const targetZone = step.to || step.z
+                const targetZone = step.to
 
                 if (action === 'move' && instanceId && fromZone && toZone) {
                   let card = null
                   if (['hand', 'gy', 'banish', 'deck', 'extra', 'free'].includes(fromZone)) {
-                    const idx = next[fromZone].findIndex(c => c.id === instanceId)
+                    const idx = next[fromZone].findIndex((c: CardInstance) => c.id === instanceId)
                     if (idx !== -1) {
                       card = next[fromZone][idx]
                       next[fromZone].splice(idx, 1)
@@ -121,7 +125,7 @@ export default function SimulatorPage() {
                   }
                 } else if (action === 'removetoken') {
                   if (['hand', 'gy', 'banish', 'free', 'deck'].includes(targetZone)) {
-                    next[targetZone] = next[targetZone].filter(c => c.id !== instanceId)
+                    next[targetZone] = next[targetZone].filter((c: CardInstance) => c.id !== instanceId)
                   } else if (next[targetZone]?.id === instanceId) {
                     next[targetZone] = null
                   }
@@ -142,7 +146,8 @@ export default function SimulatorPage() {
           game.initBoard(mainDeck, extraDeck, {})
         }
       } catch (err) {
-        showToast(`Failed to load state: ${err.message}`, 'error')
+        const message = err instanceof Error ? err.message : String(err)
+        showToast(`Failed to load state: ${message}`, 'error')
         game.initBoard([], [], {})
       } finally {
         setLoading(false)
@@ -152,7 +157,7 @@ export default function SimulatorPage() {
   }, [])
 
   // YDK file import
-  const handleFileImport = useCallback(async (file) => {
+  const handleFileImport = useCallback(async (file: File) => {
     try {
       setImporting(true)
       const parsed = await readYDKFile(file)
@@ -160,7 +165,7 @@ export default function SimulatorPage() {
 
       // Resolve and cache cards
       const cards = await fetchAndCacheCards(allIds)
-      const map = cards.reduce((acc, c) => {
+      const map = cards.reduce<Record<number, CardData>>((acc, c) => {
         if (c) acc[c.id] = c
         return acc
       }, {})
@@ -168,14 +173,15 @@ export default function SimulatorPage() {
       game.initBoard(parsed.main, parsed.extra || [], map)
       showToast('Deck imported successfully!', 'success')
     } catch (err) {
-      showToast(`Import failed: ${err.message}`, 'error')
+      const message = err instanceof Error ? err.message : String(err)
+      showToast(`Import failed: ${message}`, 'error')
     } finally {
       setImporting(false)
     }
   }, [fetchAndCacheCards, game])
 
   // Drag-and-drop file support
-  const handleDrop = useCallback((e) => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     const file = e.dataTransfer.files[0]
     if (file && (file.name.endsWith('.ydk') || file.type === 'text/plain')) {
@@ -185,19 +191,22 @@ export default function SimulatorPage() {
 
   // Share URL state
   const handleShare = useCallback(() => {
-    const mainIds = []
-    const extraIds = []
+    const mainIds: number[] = []
+    const extraIds: number[] = []
 
-    const collectIds = (zone) => {
-      const item = game.board[zone]
+    const collectIds = (zone: string) => {
+      const item: CardInstance[] | CardInstance | null | undefined | number = game.board[zone]
       if (item) {
         if (Array.isArray(item)) {
           item.forEach(c => {
             if (zone === 'extra') extraIds.push(c.cardId)
             else mainIds.push(c.cardId)
           })
-        } else {
+        } else if (typeof item === 'object' && 'cardId' in item) {
           mainIds.push(item.cardId)
+        }
+        else {
+          console.warn(`Unexpected item type in zone ${zone}:`, item)
         }
       }
     }
@@ -269,7 +278,18 @@ export default function SimulatorPage() {
             >
               {importing ? 'Importing...' : 'Import YDK File'}
             </button>
-            <input ref={fileInputRef} type="file" accept=".ydk,.txt" className="hidden" onChange={(e) => e.target.files[0] && handleFileImport(e.target.files[0])} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".ydk,.txt"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0]
+                if (file) {
+                  handleFileImport(file)
+                }
+              }}
+            />
           </div>
         </div>
       </div>
@@ -287,7 +307,7 @@ export default function SimulatorPage() {
             <span className="text-xs font-bold text-[var(--color-gold-400)] uppercase tracking-wider">Life Points</span>
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => game.setLP(prev => Math.max(0, prev - 500))}
+                onClick={() => game.setLP(Math.max(0, game.board.lp - 500))}
                 className="w-6 h-6 rounded bg-[var(--color-bg-tertiary)] hover:bg-red-950 text-red-400 border border-red-800/40 text-xs font-bold transition-colors flex items-center justify-center"
                 title="-500 LP"
               >
@@ -297,7 +317,7 @@ export default function SimulatorPage() {
                 {game.board.lp}
               </span>
               <button
-                onClick={() => game.setLP(prev => prev + 500)}
+                onClick={() => game.setLP(game.board.lp + 500)}
                 className="w-6 h-6 rounded bg-[var(--color-bg-tertiary)] hover:bg-emerald-950 text-emerald-400 border border-emerald-800/40 text-xs font-bold transition-colors flex items-center justify-center"
                 title="+500 LP"
               >

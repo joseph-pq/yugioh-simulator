@@ -61,7 +61,7 @@ export interface ComboStep {
   instanceId?: number
   f?: string
   from?: string
-  to?: string
+  to: string
   z?: string
   n?: number
   v?: number
