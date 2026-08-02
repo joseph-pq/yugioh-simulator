@@ -1,30 +1,42 @@
 import { useState, useEffect, useRef } from 'react'
+import type { ComboStep } from '../types'
+
+export interface ComboStepListProps {
+  combo: ComboStep[]
+  currentIndex: number
+  onJumpTo?: (index: number) => void
+  onResetRecord?: () => void
+}
 
 /**
  * Combo Step List & Playback Visualization Controller.
  * Enables step-by-step navigation, auto-playback with dynamic velocity control,
  * step highlighting, and record reset option.
  */
-export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRecord }) {
+export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRecord }: ComboStepListProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState(1) // Velocity multiplier (0.25x to 3.0x)
-  const timerRef = useRef(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null
     if (isPlaying) {
       // Dynamic velocity calculation: base interval is 1000ms / speed
       const intervalMs = Math.max(150, Math.round(1000 / speed))
-      timerRef.current = setInterval(() => {
+      timer = setInterval(() => {
         if (currentIndex < combo.length - 1) {
           onJumpTo?.(currentIndex + 1)
         } else {
           setIsPlaying(false)
         }
       }, intervalMs)
+      timerRef.current = timer
     } else {
-      clearInterval(timerRef.current)
+      if (timerRef.current) clearInterval(timerRef.current)
     }
-    return () => clearInterval(timerRef.current)
+    return () => {
+      if (timer) clearInterval(timer)
+    }
   }, [isPlaying, currentIndex, combo.length, onJumpTo, speed])
 
   if (combo.length === 0) {
@@ -166,27 +178,28 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
   )
 }
 
-function getActionIcon(action) {
-  const map = {
+function getActionIcon(action?: string) {
+  if (!action) return '▶️'
+  const map: Record<string, string> = {
     draw: '🃏', shuffle: '🔀', move: '↗️', pos: '🔄',
     lp: '❤️', mill: '💀', todeck: '🔝', token: '✨', removetoken: '🗑️', effect: '⚡', skill: '🎲'
   }
   return map[action] || '▶️'
 }
 
-function formatStep(step) {
+function formatStep(step: ComboStep) {
   switch (step.a) {
     case 'draw': return `Draw ${step.n || 1} card${(step.n || 1) > 1 ? 's' : ''}`
     case 'shuffle': return 'Shuffle deck'
-    case 'move': return `Move card → ${(step.to || step.t || '').toUpperCase()}`
-    case 'pos': return `Change position (${(step.z || step.to || '').toUpperCase()})`
+    case 'move': return `Move card → ${String(step.to || step.t || '').toUpperCase()}`
+    case 'pos': return `Change position (${String(step.z || step.to || '').toUpperCase()})`
     case 'lp': return `LP set to ${step.v}`
     case 'mill': return `Mill ${step.n || 1} card${(step.n || 1) > 1 ? 's' : ''}`
     case 'todeck': return `Return to deck (${step.top ? 'top' : 'bottom'})`
-    case 'token': return `Spawn Token → ${(step.to || step.t || '').toUpperCase()}`
-    case 'removetoken': return `Remove Token (${(step.z || step.to || '').toUpperCase()})`
-    case 'effect': return `Activate Effect (${(step.z || step.to || '').toUpperCase()})`
+    case 'token': return `Spawn Token → ${String(step.to || step.t || '').toUpperCase()}`
+    case 'removetoken': return `Remove Token (${String(step.z || step.to || '').toUpperCase()})`
+    case 'effect': return `Activate Effect (${String(step.z || step.to || '').toUpperCase()})`
     case 'skill': return 'Activate Skill'
-    default: return step.a
+    default: return step.a || 'Action'
   }
 }

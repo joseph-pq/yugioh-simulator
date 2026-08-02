@@ -1,10 +1,27 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState } from 'react'
+import type { CardData } from '../types'
 import { getCardImageUrl } from '../services/ygoproApi'
+
+export interface CardThumbnailProps {
+  card: CardData
+  onClick?: (card: CardData) => void
+  onContextMenu?: (card: CardData, event: React.MouseEvent) => void
+  selected?: boolean
+  count?: number
+  size?: 'sm' | 'lg'
+}
 
 /**
  * Card thumbnail with hover preview and click selection.
  */
-export default function CardThumbnail({ card, onClick, onContextMenu, selected, count, size = 'sm' }) {
+export default function CardThumbnail({
+  card,
+  onClick,
+  onContextMenu,
+  selected = false,
+  count = 0,
+  size = 'sm',
+}: CardThumbnailProps) {
   const [loaded, setLoaded] = useState(false)
   const imgSize = size === 'lg' ? 'card-thumbnail card-thumbnail-lg' : 'card-thumbnail'
 
@@ -12,12 +29,13 @@ export default function CardThumbnail({ card, onClick, onContextMenu, selected, 
     <div
       className={`relative group cursor-pointer ${selected ? 'ring-2 ring-[var(--color-gold-400)] rounded-[var(--radius-sm)]' : ''}`}
       onClick={() => onClick?.(card)}
-      onContextMenu={(e) => { e.preventDefault(); onContextMenu?.(card, e) }}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onContextMenu?.(card, e)
+      }}
       title={card.name}
     >
-      {!loaded && (
-        <div className={`${imgSize} loading-shimmer`} />
-      )}
+      {!loaded && <div className={`${imgSize} loading-shimmer`} />}
       <img
         src={getCardImageUrl(card.id, 'small')}
         alt={card.name}

@@ -1,7 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom'
 
 export default function Layout() {
-
   return (
     <div className="min-h-dvh flex flex-col">
       {/* Navigation */}
@@ -60,4 +59,3 @@ export default function Layout() {
     </div>
   )
 }
-

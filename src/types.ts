@@ -57,6 +57,17 @@ export interface BoardState {
 export interface ComboStep {
   a?: string
   t?: number
+  i?: number
+  instanceId?: number
+  f?: string
+  from?: string
+  to?: string
+  z?: string
+  n?: number
+  v?: number
+  top?: boolean
+  cardId?: number
+  card?: CardData
   [key: string]: unknown
 }
 

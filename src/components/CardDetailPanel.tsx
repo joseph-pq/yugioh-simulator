@@ -1,12 +1,18 @@
 import { useState } from 'react'
+import type { CardData } from '../types'
 import { getCardImageUrl } from '../services/ygoproApi'
+
+export interface CardDetailPanelProps {
+  card?: CardData | null
+  onClose?: () => void
+}
 
 /**
  * Side panel focused on card text content first.
  * Displays card details, stats, formatted description text with sentence line breaks and paragraph spacing,
  * and a thumbnail in the corner. Clicking the thumbnail opens a high-res image preview modal.
  */
-export default function CardDetailPanel({ card, onClose }) {
+export default function CardDetailPanel({ card }: CardDetailPanelProps) {
   const [isMaximized, setIsMaximized] = useState(false)
 
   if (!card) {
@@ -50,17 +56,17 @@ export default function CardDetailPanel({ card, onClose }) {
           </div>
 
           {/* Stats row */}
-          {(card.atk !== null || card.def !== null || card.level !== null) && (
+          {(card.atk !== undefined && card.atk !== null || card.def !== undefined && card.def !== null || card.level !== undefined && card.level !== null) && (
             <div className="flex items-center gap-2.5 text-xs font-mono font-bold mt-0.5">
-              {card.level !== null && (
+              {card.level !== undefined && card.level !== null && (
                 <span className="text-yellow-400 flex items-center gap-0.5">
                   <span>★</span>{card.level}
                 </span>
               )}
-              {card.atk !== null && (
+              {card.atk !== undefined && card.atk !== null && (
                 <span className="text-rose-400">ATK/{card.atk}</span>
               )}
-              {card.def !== null && (
+              {card.def !== undefined && card.def !== null && (
                 <span className="text-sky-400">DEF/{card.def}</span>
               )}
             </div>
@@ -132,7 +138,7 @@ export default function CardDetailPanel({ card, onClose }) {
 /**
  * Split Yu-Gi-Oh card text into plain text paragraphs and sentences with line breaks.
  */
-function renderFormattedDescription(desc) {
+function renderFormattedDescription(desc?: string) {
   if (!desc) return <p className="text-xs text-[var(--color-text-muted)]">No description available.</p>
 
   // Split raw text into major blocks (by newline, numbered effects like (1) (2), or bullet points)
@@ -167,8 +173,9 @@ function renderFormattedDescription(desc) {
   )
 }
 
-function getFrameColor(frameType) {
-  const map = {
+function getFrameColor(frameType?: string) {
+  if (!frameType) return '#64748b'
+  const map: Record<string, string> = {
     normal: '#c9a739',
     effect: '#b85c2a',
     ritual: '#3b6fb5',

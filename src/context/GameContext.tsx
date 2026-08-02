@@ -192,7 +192,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const zones = ['hand', 'egy', 'gy', 'ebanish', 'banish', 'eextra', 'extra', 'deck', 'efree', 'free']
     const sourceCard = (() => {
       if (zones.includes(fromZone)) {
-        return board[fromZone as keyof BoardState]?.find((c: CardInstance) => c.id === instanceId) || null
+        const zoneVal = board[fromZone as keyof BoardState]
+        return Array.isArray(zoneVal) ? zoneVal.find((c: CardInstance) => c.id === instanceId) || null : null
       }
 
       const zoneCard = board[fromZone as keyof BoardState]
