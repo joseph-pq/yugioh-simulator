@@ -101,6 +101,7 @@ export function GameProvider({ children }) {
   const [board, setBoard] = useState(createEmptyBoard)
   const [recording, setRecording] = useState(false)
   const [combo, setCombo] = useState([])         // recorded steps: [{ a: action, ... }]
+  const [playbackVisualizing, setPlaybackVisualizing] = useState(false)
 
   // History system for playback / undo / redo
   const [history, setHistory] = useState([createEmptyBoard()])
@@ -127,6 +128,7 @@ export function GameProvider({ children }) {
 
     setBoard(newBoard)
     setCombo([])
+    setPlaybackVisualizing(false)
     setHistory([newBoard])
     setHistoryIndex(0)
     setRecording(false)
@@ -195,11 +197,21 @@ export function GameProvider({ children }) {
   }, [updateBoardState])
 
   const moveCard = useCallback((instanceId, fromZone, toZone, position) => {
+    const zones = ['hand', 'egy', 'gy', 'ebanish', 'banish', 'eextra', 'extra', 'deck', 'efree', 'free']
+    const sourceCard = (() => {
+      if (zones.includes(fromZone)) {
+        return board[fromZone]?.find(c => c.id === instanceId) || null
+      }
+
+      const zoneCard = board[fromZone]
+      return zoneCard && zoneCard.id === instanceId ? zoneCard : null
+    })()
+
     updateBoardState(prev => {
       let card = null
 
       // Remove from source
-      if (['hand', 'egy', 'gy', 'ebanish', 'banish', 'eextra', 'extra', 'deck','efree', 'free'].includes(fromZone)) {
+      if (zones.includes(fromZone)) {
         const arr = prev[fromZone]
         const idx = arr.findIndex(c => c.id === instanceId)
         if (idx !== -1) {
@@ -218,7 +230,7 @@ export function GameProvider({ children }) {
       if (!card) return prev
 
       // Add to destination
-      if (['hand', 'egy', 'gy', 'ebanish', 'banish', 'eextra', 'extra', 'deck','efree', 'free'].includes(toZone)) {
+      if (zones.includes(toZone)) {
         prev[toZone].push(card)
       } else {
         if (prev[toZone] !== null) {
@@ -228,8 +240,10 @@ export function GameProvider({ children }) {
       }
 
       return prev
-    }, 'move', { i: instanceId, f: fromZone, to: toZone, p: position })
-  }, [updateBoardState])
+    }, 'move', {
+      i: instanceId, cardId: sourceCard?.cardId, f: fromZone, to: toZone, p: position
+    })
+  }, [board, updateBoardState])
 
   const changePosition = useCallback((zone, newPosition) => {
     updateBoardState(prev => {
@@ -358,6 +372,7 @@ export function GameProvider({ children }) {
     setHistory([createEmptyBoard()])
     setHistoryIndex(0)
     setRecording(false)
+    setPlaybackVisualizing(false)
   }, [])
 
   // ====== Recording & Playback Control ======
@@ -368,6 +383,7 @@ export function GameProvider({ children }) {
     setHistory([JSON.parse(JSON.stringify(board))])
     setHistoryIndex(0)
     setRecording(true)
+    setPlaybackVisualizing(false)
   }, [board])
 
   const stopRecording = useCallback(() => {
@@ -378,6 +394,7 @@ export function GameProvider({ children }) {
     // index is -1 (initial state) or 0 to combo.length - 1
     const targetHistoryIndex = index + 1
     if (targetHistoryIndex >= 0 && targetHistoryIndex < history.length) {
+      setPlaybackVisualizing(true)
       setHistoryIndex(targetHistoryIndex)
     }
   }, [history])
@@ -387,11 +404,13 @@ export function GameProvider({ children }) {
     setHistory(prev => prev.length > 0 ? [prev[0]] : [createEmptyBoard()])
     setHistoryIndex(0)
     setRecording(false)
+    setPlaybackVisualizing(false)
   }, [])
 
   const value = {
     board,
     recording,
+    playbackVisualizing,
     combo,
     playbackIndex: historyIndex - 1, // index in combo list
     maxPlaybackIndex: combo.length - 1,
@@ -416,6 +435,7 @@ export function GameProvider({ children }) {
     startRecording,
     stopRecording,
     jumpToStep,
+    setPlaybackVisualizing,
     setCombo,
     setHistory,
     setHistoryIndex,
