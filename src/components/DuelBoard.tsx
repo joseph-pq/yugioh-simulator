@@ -183,7 +183,6 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event
-    setActiveCard(null)
     game.setPlaybackVisualizing(false)
     if (!over || !active.data.current) return
 
@@ -280,6 +279,25 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
     }
   }, [board, game])
 
+  useEffect(() => {
+    // Handles the case where a card is dragged and dropped outside of any
+    // valid zone, effectively "canceling" the drag.
+    // Perhaps there is a better way to handle this with dnd-kit, but this
+    // works for now.
+    if (!activeCard) return
+
+    const { instanceId, fromZone } = activeCard
+    const source = board[fromZone]
+
+    const stillInSource = Array.isArray(source)
+      ? source.some(c => c.id === instanceId)
+      : source?.id === instanceId
+
+    if (!stillInSource) {
+      setActiveCard(null)
+    }
+  }, [board, activeCard])
+
   const handleSkillClick = useCallback(() => {
     game.activateSkill()
     setSkillActive(true)
@@ -294,7 +312,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
           <div className="flex items-center justify-center gap-3 w-full max-w-4xl">
 
             <div className="flex flex-col justify-between gap-3 h-[480px]">
-              <VerticalStackPileZone zone={ZONES.EBANISH} cards={board.ebanish} label="BANISH" color="var(--color-accent-blue)" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              <VerticalStackPileZone zone={ZONES.EBANISH} cards={board.ebanish} label="BANISH" color="var(--color-accent-blue)" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
               {/* Left: FREE Zone (Vertical Rectangle Stack) */}
               <VerticalStackPileZone
                 zone={ZONES.FREE}
@@ -306,15 +324,16 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
                 onContextMenu={handleContextMenu}
                 onSelectCard={onSelectCard}
                 onHoverCard={onHoverCard}
+                activeCard={activeCard}
               />
             </div>
 
             <div className="flex flex-col justify-between gap-3 h-[480px]">
-              <VerticalStackPileZone zone={ZONES.EGY} cards={board.egy} label="GRAVE" color="var(--color-accent-rose)" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+              <VerticalStackPileZone zone={ZONES.EGY} cards={board.egy} label="GRAVE" color="var(--color-accent-rose)" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
               {/* Left Column 2: FIELD (Top) & EXTRA (Bottom) */}
               <div className="flex flex-col justify-between gap-3 h-[240px]">
-                <BoardZone zone={ZONES.FIELD} card={board.field} label="" outlineColor="border-yellow-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.EXTRA_PILE} card={board.extra_pile} label="" outlineColor="border-slate-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.FIELD} card={board.field} label="" outlineColor="border-yellow-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
+                <BoardZone zone={ZONES.EXTRA_PILE} card={board.extra_pile} label="" outlineColor="border-slate-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
               </div>
             </div>
 
@@ -322,43 +341,43 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
             <div className="flex flex-col gap-2.5 items-center">
               {/* Spell/Trap Row: E S/T1, E S/T2, E S/T3 */}
               <div className="flex gap-3">
-                <BoardZone zone={ZONES.EST1} card={board.est1} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.EST2} card={board.est2} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.EST3} card={board.est3} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.EST1} card={board.est1} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
+                <BoardZone zone={ZONES.EST2} card={board.est2} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
+                <BoardZone zone={ZONES.EST3} card={board.est3} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
               </div>
               {/* Monster Row: EM1, EM2, EM3 */}
               <div className="flex gap-3">
-                <BoardZone zone={ZONES.EM1} card={board.em1} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.EM2} card={board.em2} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.EM3} card={board.em3} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.EM1} card={board.em1} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
+                <BoardZone zone={ZONES.EM2} card={board.em2} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
+                <BoardZone zone={ZONES.EM3} card={board.em3} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
               </div>
 
               {/* EMZ Row */}
               <div className="flex justify-center gap-22 py-0.5">
-                <BoardZone zone={ZONES.EMZ1} card={board.emz1} label="" outlineColor="border-purple-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.EMZ2} card={board.emz2} label="" outlineColor="border-purple-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.EMZ1} card={board.emz1} label="" outlineColor="border-purple-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
+                <BoardZone zone={ZONES.EMZ2} card={board.emz2} label="" outlineColor="border-purple-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
               </div>
 
               {/* Monster Row: M1, M2, M3 */}
               <div className="flex gap-3">
-                <BoardZone zone={ZONES.M1} card={board.m1} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.M2} card={board.m2} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.M3} card={board.m3} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.M1} card={board.m1} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
+                <BoardZone zone={ZONES.M2} card={board.m2} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
+                <BoardZone zone={ZONES.M3} card={board.m3} label="" outlineColor="border-blue-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
               </div>
 
               {/* Spell/Trap Row: S/T1, S/T2, S/T3 */}
               <div className="flex gap-3">
-                <BoardZone zone={ZONES.ST1} card={board.st1} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.ST2} card={board.st2} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.ST3} card={board.st3} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.ST1} card={board.st1} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
+                <BoardZone zone={ZONES.ST2} card={board.st2} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
+                <BoardZone zone={ZONES.ST3} card={board.st3} label="" outlineColor="border-emerald-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
               </div>
             </div>
 
             {/* Right: GRAVE & BANISH Vertical Rectangle Stacked Piles */}
             <div className="flex flex-col justify-between gap-3 h-[480px]">
               <div className="flex flex-col justify-between gap-3 h-[240px]">
-                <BoardZone zone={ZONES.EEXTRA_PILE} card={board.eextra_pile} label="" outlineColor="border-slate-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
-                <BoardZone zone={ZONES.EFIELD} card={board.efield} label="" outlineColor="border-yellow-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <BoardZone zone={ZONES.EEXTRA_PILE} card={board.eextra_pile} label="" outlineColor="border-slate-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
+                <BoardZone zone={ZONES.EFIELD} card={board.efield} label="" outlineColor="border-yellow-600/50" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
               </div>
               <VerticalStackPileZone zone={ZONES.GY} cards={board.gy} label="GRAVE" color="var(--color-accent-rose)" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
             </div>
@@ -373,9 +392,10 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
                 onContextMenu={handleContextMenu}
                 onSelectCard={onSelectCard}
                 onHoverCard={onHoverCard}
+                activeCard={activeCard}
               />
               <div className="flex items-end gap-2">
-                <VerticalStackPileZone zone={ZONES.BANISH} cards={board.banish} label="BANISH" color="var(--color-accent-blue)" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
+                <VerticalStackPileZone zone={ZONES.BANISH} cards={board.banish} label="BANISH" color="var(--color-accent-blue)" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
                 <SkillActionButton onClick={handleSkillClick} isActive={skillActive} />
               </div>
             </div>
@@ -394,6 +414,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
               onContextMenu={handleContextMenu}
               onSelectCard={onSelectCard}
               onHoverCard={onHoverCard}
+              activeCard={activeCard}
             />
           </div>
 
@@ -406,6 +427,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
               onContextMenu={handleContextMenu}
               onSelectCard={onSelectCard}
               onHoverCard={onHoverCard}
+              activeCard={activeCard}
             />
           </div>
         </div>
@@ -432,6 +454,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
               onContextMenu={handleContextMenu}
               onSelectCard={onSelectCard}
               onHoverCard={onHoverCard}
+              activeCard={activeCard}
             />
           </div>
         </div>
@@ -487,9 +510,10 @@ interface BoardZoneProps {
   onContextMenu: (e: React.MouseEvent, card: CardInstance, zone: string) => void
   onSelectCard?: (card?: CardData) => void
   onHoverCard?: (card?: CardData) => void
+  activeCard?: ActiveCardData | null
 }
 
-function BoardZone({ zone, card, label, outlineColor, effectCardId, hiddenCardId, onContextMenu, onSelectCard, onHoverCard }: BoardZoneProps) {
+function BoardZone({ zone, card, label, outlineColor, effectCardId, hiddenCardId, onContextMenu, onSelectCard, onHoverCard, activeCard }: BoardZoneProps) {
   const { setNodeRef, isOver } = useDroppable({ id: zone })
   const isFaceDown = card?.position === POSITION.FACE_DOWN_DEF || card?.position === POSITION.FACE_DOWN
   const isDefense = card?.position === POSITION.FACE_UP_DEF || card?.position === POSITION.FACE_DOWN_DEF
@@ -514,6 +538,7 @@ function BoardZone({ zone, card, label, outlineColor, effectCardId, hiddenCardId
           onClick={() => onSelectCard?.(card.data || undefined)}
           onMouseEnter={() => onHoverCard?.(card.data || undefined)}
           hoverDirection='up'
+          isGhost={activeCard?.instanceId === card.id}
         />
       ) : (
         <span className="text-[9px] text-[var(--color-text-muted)] font-bold font-sans uppercase tracking-wider">{label}</span>
@@ -527,6 +552,7 @@ interface HorizontalStackPileZoneProps {
   cards: CardInstance[]
   effectCardId?: number | null
   hiddenCardId?: number | null
+  activeCard?: ActiveCardData | null
   onContextMenu: (e: React.MouseEvent, card: CardInstance, zone: string) => void
   onSelectCard?: (card?: CardData) => void
   onHoverCard?: (card?: CardData) => void
@@ -540,6 +566,7 @@ function HorizontalStackPileZone({
   onContextMenu,
   onSelectCard,
   onHoverCard,
+  activeCard,
 }: HorizontalStackPileZoneProps) {
   const { setNodeRef, isOver } = useDroppable({ id: zone })
 
@@ -598,6 +625,7 @@ function HorizontalStackPileZone({
               }}
               onMouseLeave={() => setHoveredCardId(null)}
               hoverDirection='up'
+              isGhost={activeCard?.instanceId === card.id}
             />
           </div>
         ))
@@ -613,12 +641,13 @@ interface VerticalStackPileZoneProps {
   color?: string
   effectCardId?: number | null
   hiddenCardId?: number | null
+  activeCard?: ActiveCardData | null
   onContextMenu: (e: React.MouseEvent, card: CardInstance, zone: string) => void
   onSelectCard?: (card?: CardData) => void
   onHoverCard?: (card?: CardData) => void
 }
 
-function VerticalStackPileZone({ zone, cards, label, color, effectCardId, hiddenCardId, onContextMenu, onSelectCard, onHoverCard }: VerticalStackPileZoneProps) {
+function VerticalStackPileZone({ zone, cards, label, color, effectCardId, hiddenCardId, onContextMenu, onSelectCard, onHoverCard, activeCard }: VerticalStackPileZoneProps) {
   const { setNodeRef, isOver } = useDroppable({ id: zone })
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null)
 
@@ -688,6 +717,7 @@ function VerticalStackPileZone({ zone, cards, label, color, effectCardId, hidden
                 }}
                 onMouseLeave={() => setHoveredCardId(null)}
                 hoverDirection='left'
+                isGhost={activeCard?.instanceId === card.id}
               />
             </div>
           ))}
@@ -721,6 +751,7 @@ interface DraggableCardProps {
   zone: string
   isFaceDown?: boolean
   isDefense?: boolean
+  isGhost?: boolean
   isEffectActivated?: boolean
   hoverDirection: string
   onContextMenu: (e: React.MouseEvent, card: CardInstance, zone: string) => void
@@ -729,7 +760,7 @@ interface DraggableCardProps {
   onMouseLeave?: () => void
 }
 
-function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, onContextMenu, onClick, onMouseEnter, onMouseLeave, hoverDirection = 'up' }: DraggableCardProps) {
+function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, onContextMenu, onClick, onMouseEnter, onMouseLeave, hoverDirection = 'up', isGhost }: DraggableCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${zone}-${card.id}`,
     data: { instanceId: card.id, cardId: card.cardId, fromZone: zone, data: card.data },
@@ -739,13 +770,15 @@ function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, o
       ? '-translate-x-3'
       : '-translate-y-3'
 
+  // ${isDragging ? `${hoverDirectionContent} opacity-40` : `hover:${hoverDirectionContent} hover:z-50`}
   return (
     <div
       ref={setNodeRef}
       {...attributes}
       {...listeners}
       className={`relative cursor-grab active:cursor-grabbing transition-all duration-200 ease-out flex-shrink-0 rounded transform-gpu
-        ${isDragging ? `${hoverDirectionContent} opacity-40` : `hover:${hoverDirectionContent} hover:z-50`}
+        ${isDragging ? `${hoverDirectionContent}` : `hover:${hoverDirectionContent} hover:z-50`}
+        ${isGhost ? 'opacity-20' : ''}
         ${isDefense ? 'rotate-90' : ''}
         ${isEffectActivated ? 'ring-4 ring-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.95)] scale-110 z-50 animate-pulse' : ''}`}
       onContextMenu={(e) => onContextMenu(e, card, zone)}
