@@ -124,6 +124,7 @@ export interface GameContextValue {
   setCombo: (value: ComboStep[]) => void
   setHistory: (value: BoardState[]) => void
   setHistoryIndex: (value: number) => void
+  returnAllToDecks: () => void
 }
 
 export interface DeckContextValue {

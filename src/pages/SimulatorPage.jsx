@@ -333,6 +333,12 @@ export default function SimulatorPage() {
           >
             <span>✨</span> Spawn Monster Token
           </button>
+          <button
+            onClick={game.returnAllToDecks}
+            className="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow active:scale-95 flex items-center justify-center gap-1.5"
+          >
+            📥 Return All to Decks
+          </button>
         </div>
 
         {/* Card Details Panel */}

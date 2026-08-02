@@ -44,6 +44,40 @@ export const MONSTER_ZONES = [ZONES.M1, ZONES.M2, ZONES.M3, ZONES.EMZ1, ZONES.EM
 export const SPELL_ZONES = [ZONES.ST1, ZONES.ST2, ZONES.ST3]
 export const BOARD_ZONES = [...MONSTER_ZONES, ...SPELL_ZONES, ZONES.FIELD, ZONES.EXTRA_PILE]
 
+const ARRAY_ZONES = [
+  ZONES.HAND,
+  ZONES.GY,
+  ZONES.EGY,
+  ZONES.BANISH,
+  ZONES.EBANISH,
+  ZONES.DECK,
+  ZONES.EXTRA,
+  ZONES.EEXTRA,
+  ZONES.FREE,
+  ZONES.EFREE,
+] as const
+
+const SINGLE_ZONES = [
+  ZONES.M1,
+  ZONES.M2,
+  ZONES.M3,
+  ZONES.EM1,
+  ZONES.EM2,
+  ZONES.EM3,
+  ZONES.ST1,
+  ZONES.ST2,
+  ZONES.ST3,
+  ZONES.EST1,
+  ZONES.EST2,
+  ZONES.EST3,
+  ZONES.FIELD,
+  ZONES.EFIELD,
+  ZONES.EMZ1,
+  ZONES.EMZ2,
+  ZONES.EXTRA_PILE,
+  ZONES.EEXTRA_PILE,
+] as const
+
 export const POSITION = {
   FACE_UP_ATK: 'fua',
   FACE_UP_DEF: 'fud',
@@ -51,6 +85,20 @@ export const POSITION = {
   FACE_DOWN: 'fd',
   FACE_UP: 'fu',
 } as const
+
+const EXTRA_FRAME_KEYWORDS = ['fusion', 'synchro', 'xyz', 'link']
+
+function isExtraDeckCard(card: CardInstance) {
+  const frame = (card.data?.frameType ?? '').toLowerCase()
+
+  return EXTRA_FRAME_KEYWORDS.some(keyword => frame.includes(keyword))
+}
+
+function isToken(card: CardInstance) {
+  const frame = (card.data?.frameType ?? '').toLowerCase()
+
+  return frame.includes('token')
+}
 
 function createEmptyBoard(): BoardState {
   return {
@@ -186,6 +234,79 @@ export function GameProvider({ children }: { children: ReactNode }) {
       })
       return prev
     }, 'sort', {})
+  }, [updateBoardState])
+
+  const returnAllToDecks = useCallback(() => {
+    updateBoardState(prev => {
+      const main: CardInstance[] = []
+      const extra: CardInstance[] = []
+
+      // Collect cards from array zones
+      ARRAY_ZONES.forEach(zone => {
+        prev[zone].forEach(card => {
+          if (isToken(card)) {
+            return
+          }
+
+          if (isExtraDeckCard(card)) {
+            extra.push(card)
+          } else {
+            main.push(card)
+          }
+        })
+
+        prev[zone] = []
+      })
+
+      // Collect cards from single-card zones
+      SINGLE_ZONES.forEach(zone => {
+        const card = prev[zone]
+
+        if (!card) {
+          return
+        }
+
+        if (!isToken(card)) {
+          if (isExtraDeckCard(card)) {
+            extra.push(card)
+          } else {
+            main.push(card)
+          }
+        }
+
+        prev[zone] = null
+      })
+
+      prev.deck = main
+      prev.extra = extra
+
+      // Reuse your existing sort algorithm
+      prev.deck.sort((a, b) => {
+        const cardA = cardsRef.current[a.cardId]
+        const cardB = cardsRef.current[b.cardId]
+
+        if (!cardA || !cardB) return 0
+
+        const typeA = getOrderValue(cardA)
+        const typeB = getOrderValue(cardB)
+
+        if (typeA !== typeB)
+          return typeA - typeB
+
+        return cardA.name.localeCompare(cardB.name)
+      })
+
+      prev.extra.sort((a, b) => {
+        const cardA = cardsRef.current[a.cardId]
+        const cardB = cardsRef.current[b.cardId]
+
+        if (!cardA || !cardB) return 0
+
+        return cardA.name.localeCompare(cardB.name)
+      })
+
+      return prev
+    }, 'reset_board', {})
   }, [updateBoardState])
 
   const moveCard = useCallback((instanceId: number, fromZone: string, toZone: string, position?: string) => {
@@ -426,6 +547,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setCombo,
     setHistory,
     setHistoryIndex,
+    returnAllToDecks,
   }
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
