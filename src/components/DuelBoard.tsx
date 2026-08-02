@@ -64,7 +64,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   }>({ effect: null, skill: null })
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 1 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
 
   // Animated Flying Drag Movement during Record Playback
@@ -596,7 +596,7 @@ function HorizontalStackPileZone({
     <div
       ref={setNodeRef}
       id={`zone-${zone}`}
-      className={`relative flex items-start min-h-[78px] overflow-hidden transition-colors duration-200 ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''
+      className={`relative flex items-start min-h-[78px] overflow-visible transition-colors duration-200 ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''
         }`}
     >
       {visibleCards.length === 0 ? (
@@ -695,7 +695,7 @@ function VerticalStackPileZone({ zone, cards, label, color, effectCardId, hidden
         </div>
       ) : (
         /* Dynamic Vertical Stack Cascade */
-        <div className="relative flex flex-col items-center w-full flex-1 pt-1 overflow-hidden">
+        <div className="relative flex flex-col items-center w-full flex-1 pt-1 overflow-visible">
           {visibleCards.map((card, idx) => (
             <div
               key={card.id}
