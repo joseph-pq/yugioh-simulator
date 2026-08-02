@@ -140,6 +140,9 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   }, [board, game.playbackIndex, game.combo, game.playbackVisualizing])
 
   useEffect(() => {
+    if (!game.playbackVisualizing) {
+      return
+    }
     const glowTimers = playbackGlowTimers.current
     if (glowTimers.effect) clearTimeout(glowTimers.effect)
     if (glowTimers.skill) clearTimeout(glowTimers.skill)
@@ -157,14 +160,14 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
       setSkillActive(false)
       if (cardId) {
         setEffectCardId(cardId)
-        glowTimers.effect = setTimeout(() => setEffectCardId(null), 1200)
+        glowTimers.effect = setTimeout(() => setEffectCardId(null), 800)
       } else {
         setEffectCardId(null)
       }
     } else if (step.a === 'skill') {
       setEffectCardId(null)
       setSkillActive(true)
-      glowTimers.skill = setTimeout(() => setSkillActive(false), 1200)
+      glowTimers.skill = setTimeout(() => setSkillActive(false), 400)
     } else {
       setEffectCardId(null)
       setSkillActive(false)
@@ -301,7 +304,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   const handleSkillClick = useCallback(() => {
     game.activateSkill()
     setSkillActive(true)
-    setTimeout(() => setSkillActive(false), 1200)
+    setTimeout(() => setSkillActive(false), 400)
   }, [game])
 
   return (
@@ -737,11 +740,19 @@ function SkillActionButton({ onClick, isActive }: SkillActionButtonProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 rounded-xl p-1.5 flex items-center justify-center transition-all duration-200 hover:bg-[var(--color-gold-500)]/20 hover:scale-[1.04] ${isActive ? 'ring-4 ring-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.95)] scale-110 z-50 animate-pulse' : ''}`}
+      className="shrink-0 transition-transform duration-200 hover:scale-105"
       title="Activate Skill"
-      aria-label="Activate Skill"
     >
-      <img src={skillIcon} alt="" className="block h-[70px] w-[70px] object-contain drop-shadow-[0_3px_6px_rgba(0,0,0,0.45)] select-none pointer-events-none" draggable="false" />
+      <img
+        src={skillIcon}
+        alt="Skill"
+        className={`
+          w-14 h-14 transition-all duration-400
+          ${isActive
+            ? 'drop-shadow-[0_0_18px_rgba(250,204,21,0.95)] scale-110 animate-pulse'
+            : ''}
+        `}
+      />
     </button>
   )
 }
