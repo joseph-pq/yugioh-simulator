@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from 'react'
 import type { BoardState, CardData, CardInstance, ComboStep, GameContextValue } from '../types'
+import { ZONES } from '../types'
 
 const GameContext = createContext<GameContextValue | null>(null)
 
@@ -17,34 +18,12 @@ export function useGame() {
   return ctx
 }
 
-export const ZONES = {
-  HAND: 'hand',
-  M1: 'm1', M2: 'm2', M3: 'm3',
-  EST1: 'est1', EST2: 'est2', EST3: 'est3',
-  EM1: 'em1', EM2: 'em2', EM3: 'em3',
-  ST1: 'st1', ST2: 'st2', ST3: 'st3',
-  FIELD: 'field',
-  EFIELD: 'efield',
-  GY: 'gy',
-  EGY: 'egy',
-  BANISH: 'banish',
-  EBANISH: 'ebanish',
-  DECK: 'deck',
-  EXTRA: 'extra',
-  EEXTRA: 'eextra',
-  FREE: 'free',
-  EFREE: 'efree',
-  EMZ1: 'emz1',
-  EMZ2: 'emz2',
-  EXTRA_PILE: 'extra_pile',
-  EEXTRA_PILE: 'eextra_pile',
-} as const
 
 export const MONSTER_ZONES = [ZONES.M1, ZONES.M2, ZONES.M3, ZONES.EMZ1, ZONES.EMZ2]
 export const SPELL_ZONES = [ZONES.ST1, ZONES.ST2, ZONES.ST3]
 export const BOARD_ZONES = [...MONSTER_ZONES, ...SPELL_ZONES, ZONES.FIELD, ZONES.EXTRA_PILE]
 
-const ARRAY_ZONES = [
+export const ARRAY_ZONES = [
   ZONES.HAND,
   ZONES.GY,
   ZONES.EGY,
@@ -100,7 +79,7 @@ function isToken(card: CardInstance) {
   return frame.includes('token')
 }
 
-function createEmptyBoard(): BoardState {
+export function createEmptyBoard(): BoardState {
   return {
     hand: [],
     m1: null,
@@ -135,7 +114,7 @@ function createEmptyBoard(): BoardState {
 }
 
 let nextInstanceId = 1
-function makeInstance(cardId: number, data: CardData | null | undefined): CardInstance {
+export function makeInstance(cardId: number, data: CardData | null | undefined): CardInstance {
   return { id: nextInstanceId++, cardId, data }
 }
 

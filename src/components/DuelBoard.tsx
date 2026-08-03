@@ -10,8 +10,9 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { useGame, ZONES, POSITION, MONSTER_ZONES, SPELL_ZONES } from '../context/GameContext'
+import { useGame,  POSITION, MONSTER_ZONES, SPELL_ZONES } from '../context/GameContext'
 import type { CardData, CardInstance } from '../types'
+import { ZONES } from '../types'
 import { getCardImageUrl } from '../services/ygoproApi'
 import CardContextMenu from './CardContextMenu'
 import skillIcon from '../assets/skill.png'

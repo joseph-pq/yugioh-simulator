@@ -11,9 +11,7 @@ if (!rootElement) {
 }
 
 createRoot(rootElement).render(
-  <StrictMode>
     <HashRouter>
       <App />
     </HashRouter>
-  </StrictMode>,
 )

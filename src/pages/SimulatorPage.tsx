@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import type { CardInstance, CardData } from '../types'
+import type { CardInstance, CardData, Zone } from '../types'
 import { useLocation } from 'react-router'
-import { useGame } from '../context/GameContext'
+import { useGame, ARRAY_ZONES, createEmptyBoard, makeInstance } from '../context/GameContext'
 import { readStateFromUrl, pushStateToUrl, generateShareUrl } from '../services/urlState'
 import { fetchAndCacheCards } from '../services/cardCache'
 import { readYDKFile } from '../utils/ydkParser'
@@ -34,6 +34,7 @@ export default function SimulatorPage() {
         const hash = window.location.hash
         if (hash && hash.length > 5) {
           const state = readStateFromUrl()
+          console.log("Loaded state from URL:", state)
           if (state) {
             setDeckName(state.name || '')
             setMainDeck(state.main || [])
@@ -60,20 +61,22 @@ export default function SimulatorPage() {
             })
 
             game.initBoard(state.main || [], state.extra || [], map)
-            console.log('Reconstructing history from combo steps:', state.combo)
+            const initialBoard = createEmptyBoard()
+            console.log("main:", state.main)
+            initialBoard.deck = (state.main || []).map(cid => makeInstance(cid, map[cid]))
+            initialBoard.extra = (state.extra || []).map(cid => makeInstance(cid, map[cid]))
+            initialBoard.lp = 4000
 
             // Reconstruct history if combo steps are present
             if (state.combo && state.combo.length > 0) {
-              const fullHistory = [JSON.parse(JSON.stringify(game.board))]
-              console.log('full history:', fullHistory)
-              let currentBoard = JSON.parse(JSON.stringify(game.board))
-              console.log('current board:', currentBoard)
+              const fullHistory = [JSON.parse(JSON.stringify(initialBoard))]
+              let currentBoard = JSON.parse(JSON.stringify(initialBoard))
 
               state.combo.forEach(step => {
                 const next = JSON.parse(JSON.stringify(currentBoard))
                 const action = step.a
-                const fromZone = step.from || step.f
-                const toZone = step.to
+                const fromZone: Zone = step.from || step.f
+                const toZone: Zone = step.to
                 const instanceId = step.instanceId || step.i
                 const position = step.position || step.p
                 const val = step.val !== undefined ? step.val : step.v
@@ -81,20 +84,23 @@ export default function SimulatorPage() {
 
                 if (action === 'move' && instanceId && fromZone && toZone) {
                   let card = null
-                  if (['hand', 'gy', 'banish', 'deck', 'extra', 'free'].includes(fromZone)) {
+                  if (ARRAY_ZONES.includes(fromZone)) {
                     const idx = next[fromZone].findIndex((c: CardInstance) => c.id === instanceId)
                     if (idx !== -1) {
                       card = next[fromZone][idx]
                       next[fromZone].splice(idx, 1)
+                    } else {
+                      console.warn(`Card with instanceId ${instanceId} not found in zone ${fromZone}`)
+                      console.warn(`Current ids in ${fromZone}:`, next[fromZone].map((c: CardInstance) => c.id))
                     }
                   } else {
                     card = next[fromZone]
                     if (card && card.id === instanceId) next[fromZone] = null
                   }
-
+                  console.log("Card to move:", card, "from", fromZone, "to", toZone)
                   if (card) {
                     if (position) card.position = position
-                    if (['hand', 'gy', 'banish', 'deck', 'extra', 'free'].includes(toZone)) {
+                    if (ARRAY_ZONES.includes(toZone)) {
                       next[toZone].push(card)
                     } else {
                       next[toZone] = card
@@ -137,6 +143,7 @@ export default function SimulatorPage() {
               game.setCombo(state.combo)
               game.setHistory(fullHistory)
               game.setHistoryIndex(fullHistory.length - 1)
+              console.log("fullHistory", fullHistory)
             }
 
             showToast('Loaded shared combo state!', 'success')

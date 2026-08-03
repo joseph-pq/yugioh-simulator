@@ -53,15 +53,39 @@ export interface BoardState {
   lp: number
   [key: string]: CardInstance | CardInstance[] | number | null | undefined
 }
+export const ZONES = {
+  HAND: 'hand',
+  M1: 'm1', M2: 'm2', M3: 'm3',
+  EST1: 'est1', EST2: 'est2', EST3: 'est3',
+  EM1: 'em1', EM2: 'em2', EM3: 'em3',
+  ST1: 'st1', ST2: 'st2', ST3: 'st3',
+  FIELD: 'field',
+  EFIELD: 'efield',
+  GY: 'gy',
+  EGY: 'egy',
+  BANISH: 'banish',
+  EBANISH: 'ebanish',
+  DECK: 'deck',
+  EXTRA: 'extra',
+  EEXTRA: 'eextra',
+  FREE: 'free',
+  EFREE: 'efree',
+  EMZ1: 'emz1',
+  EMZ2: 'emz2',
+  EXTRA_PILE: 'extra_pile',
+  EEXTRA_PILE: 'eextra_pile',
+} as const
+
+export type Zone = typeof ZONES[keyof typeof ZONES]
 
 export interface ComboStep {
   a?: string
   t?: number
   i?: number
   instanceId?: number
-  f?: string
-  from?: string
-  to: string
+  f?: Zone
+  from?: Zone
+  to: Zone
   z?: string
   n?: number
   v?: number
