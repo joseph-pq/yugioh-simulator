@@ -10,7 +10,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { useGame,  POSITION, MONSTER_ZONES, SPELL_ZONES } from '../context/GameContext'
+import { useGame, POSITION, MONSTER_ZONES, SPELL_ZONES } from '../context/GameContext'
 import type { CardData, CardInstance } from '../types'
 import { ZONES } from '../types'
 import { getCardImageUrl } from '../services/ygoproApi'
@@ -777,19 +777,24 @@ function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, o
     id: `${zone}-${card.id}`,
     data: { instanceId: card.id, cardId: card.cardId, fromZone: zone, data: card.data },
   })
-  const hoverDirectionContent =
+
+  const hoverClass =
+    hoverDirection === 'left'
+      ? 'hover:-translate-x-3'
+      : 'hover:-translate-y-3'
+
+  const dragClass =
     hoverDirection === 'left'
       ? '-translate-x-3'
       : '-translate-y-3'
 
-  // ${isDragging ? `${hoverDirectionContent} opacity-40` : `hover:${hoverDirectionContent} hover:z-50`}
   return (
     <div
       ref={setNodeRef}
       {...attributes}
       {...listeners}
       className={`relative cursor-grab active:cursor-grabbing transition-all duration-200 ease-out flex-shrink-0 rounded transform-gpu
-        ${isDragging ? `${hoverDirectionContent}` : `hover:${hoverDirectionContent} hover:z-50`}
+        ${isDragging ? dragClass : `${hoverClass} hover:z-50`}
         ${isGhost ? 'opacity-20' : ''}
         ${isDefense ? 'rotate-90' : ''}
         ${isEffectActivated ? 'ring-4 ring-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.95)] scale-110 z-50 animate-pulse' : ''}`}
