@@ -62,10 +62,18 @@ export default function SimulatorPage() {
 
             game.initBoard(state.main || [], state.extra || [], map)
             const initialBoard = createEmptyBoard()
-            console.log("main:", state.main)
+            const totalSize = (state.main || []).length + (state.extra || []).length
             initialBoard.deck = (state.main || []).map(cid => makeInstance(cid, map[cid]))
             initialBoard.extra = (state.extra || []).map(cid => makeInstance(cid, map[cid]))
             initialBoard.lp = 4000
+            // decrease the id of each instance by totalSize
+            initialBoard.deck.forEach((c, idx) => {
+              c.id -= totalSize
+            })
+            initialBoard.extra.forEach((c, idx) => {
+              c.id -= totalSize
+            })
+            console.log("Initial board reconstructed:", initialBoard)
 
             // Reconstruct history if combo steps are present
             if (state.combo && state.combo.length > 0) {
