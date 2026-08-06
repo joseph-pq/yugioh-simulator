@@ -1,3 +1,5 @@
+import type { RefObject } from 'react'
+
 export interface CardData {
   id: number
   name: string
@@ -149,6 +151,8 @@ export interface GameContextValue {
   setHistory: (value: BoardState[]) => void
   setHistoryIndex: (value: number) => void
   returnAllToDecks: () => void
+  initialMainIds: RefObject<number[]>
+  initialExtraIds: RefObject<number[]>
 }
 
 export interface DeckContextValue {

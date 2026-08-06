@@ -136,7 +136,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [history, setHistory] = useState<BoardState[]>([createEmptyBoard()])
   const [historyIndex, setHistoryIndex] = useState(0)
 
-  const cardsRef = useRef<Record<number, CardData | undefined>>({})
+  const cardsRef = useRef<Record<number, CardData | undefined>>({})  // maps ygopro cardId to card info
+  const initialMainIds = useRef<number[]>([])
+  const initialExtraIds = useRef<number[]>([])
 
   useEffect(() => {
     if (history[historyIndex]) {
@@ -148,6 +150,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     nextInstanceId = 1
     cardsRef.current = cardDataMap
 
+    initialMainIds.current = mainIds
+    initialExtraIds.current = extraIds
     const newBoard = createEmptyBoard()
     newBoard.deck = mainIds.map(cid => makeInstance(cid, cardDataMap[cid]))
     newBoard.extra = extraIds.map(cid => makeInstance(cid, cardDataMap[cid]))
@@ -527,6 +531,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setHistory,
     setHistoryIndex,
     returnAllToDecks,
+    initialMainIds,
+    initialExtraIds,
   }
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>

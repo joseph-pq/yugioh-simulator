@@ -236,8 +236,8 @@ export default function SimulatorPage() {
     collectIds('efield')
 
     const state = {
-      main: mainIds.length > 0 ? mainIds : mainDeck,
-      extra: extraIds.length > 0 ? extraIds : extraDeck,
+      main: game.initialMainIds.current,
+      extra: game.initialExtraIds.current,
       combo: game.combo,
       name: deckName || 'combo-deck',
     }
