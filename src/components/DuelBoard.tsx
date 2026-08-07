@@ -58,7 +58,6 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   const [effectCardId, setEffectCardId] = useState<number | null>(null) // Glow ONLY when effect is activated
   const [skillActive, setSkillActive] = useState(false)
   const [flyingCard, setFlyingCard] = useState<FlyingCardState | null>(null)
-  const [hiddenPlaybackCardId, setHiddenPlaybackCardId] = useState<number | null>(null)
   const playbackGlowTimers = useRef<{
     effect: ReturnType<typeof setTimeout> | null
     skill: ReturnType<typeof setTimeout> | null
@@ -67,14 +66,28 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
+  // Derive hiddenPlaybackCardId synchronously during render
+  // This avoids a mismatch between the visual state and the actual board
+  // state during playback, which can cause flickering or incorrect card
+  // visibility.
+  let hiddenPlaybackCardId: number | null = null
+  if (game.playbackVisualizing && game.playbackIndex >= 0 && game.combo[game.playbackIndex]) {
+    const step = game.combo[game.playbackIndex]
+    if (step.a === 'move') {
+      hiddenPlaybackCardId = step.i || step.instanceId || null
+    } else if (step.a === 'draw') {
+      const drawnCount = Math.max(1, step.n || 1)
+      const drawnCards = board.hand.slice(Math.max(0, board.hand.length - drawnCount))
+      hiddenPlaybackCardId = drawnCards[0]?.id || null
+    }
+  }
+
 
   // Animated Flying Drag Movement during Record Playback
   useEffect(() => {
     let frameId: number | null = null
     let animTimer: ReturnType<typeof setTimeout> | null = null
     let endTimer: ReturnType<typeof setTimeout> | null = null
-
-    setHiddenPlaybackCardId(null)
 
     if (!game.playbackVisualizing) {
       setFlyingCard(null)
@@ -105,10 +118,6 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
           const toEl = document.getElementById(`zone-${toZone}`)
 
           if (fromEl && toEl) {
-            if (step.a === 'move') {
-              setHiddenPlaybackCardId(cardId)
-            }
-
             const startRect = fromEl.getBoundingClientRect()
             const endRect = toEl.getBoundingClientRect()
 
@@ -126,7 +135,9 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
             endTimer = setTimeout(() => {
               setFlyingCard(null)
-              setHiddenPlaybackCardId(prev => prev === cardId ? null : prev)
+              // Setting visualization to false makes hiddenPlaybackCardId
+              // synchronously null on next render
+              game.setPlaybackVisualizing(false)
             }, 550)
           }
         }
@@ -529,7 +540,7 @@ function BoardZone({ zone, card, label, outlineColor, effectCardId, hiddenCardId
       id={`zone-${zone}`}
       className={`relative w-[64px] h-[86px] rounded-lg border-2 border-dashed flex items-center justify-center transition-all duration-200
         ${isOver ? 'border-[var(--color-gold-400)] bg-[var(--color-gold-500)]/10 scale-105' : `${outlineColor || 'border-[var(--color-border)]'} bg-[var(--color-bg-tertiary)]/50`}
-        ${card ? 'border-solid' : ''}`}
+        ${card && !isHidden ? 'border-solid' : ''}`}
     >
       {card && !isHidden ? (
         <DraggableCard
