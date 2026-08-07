@@ -124,8 +124,14 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
             setFlyingCard({
               id: cardId,
               cardId: cardImgId,
-              start: { x: startRect.left + startRect.width / 2 - 25, y: startRect.top + startRect.height / 2 - 35 },
-              end: { x: endRect.left + endRect.width / 2 - 25, y: endRect.top + endRect.height / 2 - 35 },
+              start: {
+                x: startRect.left + startRect.width / 2 - (60/2),
+                y: startRect.top + startRect.height / 2 - (87/2),
+              },
+              end: {
+                x: endRect.left + endRect.width / 2 - (60/2),
+                y: endRect.top + endRect.height / 2 - (87/2),
+              },
               animating: false,
             })
 
@@ -489,8 +495,8 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
           style={{
             left: `${flyingCard.animating ? flyingCard.end.x : flyingCard.start.x}px`,
             top: `${flyingCard.animating ? flyingCard.end.y : flyingCard.start.y}px`,
-            width: '56px',
-            height: '80px',
+            width: 'var(--card-width)',
+            height: 'var(--card-height)',
           }}
         >
           <img
@@ -802,6 +808,7 @@ function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, o
   return (
     <div
       ref={setNodeRef}
+      id={`card-${card.id}`}
       {...attributes}
       {...listeners}
       className={`relative cursor-grab active:cursor-grabbing transition-all duration-200 ease-out flex-shrink-0 rounded transform-gpu
