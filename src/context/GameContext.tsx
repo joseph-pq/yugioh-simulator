@@ -128,7 +128,6 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  const [board, setBoard] = useState<BoardState>(() => createEmptyBoard())
   const [recording, setRecording] = useState(false)
   const [combo, setCombo] = useState<ComboStep[]>([])
   const [playbackVisualizing, setPlaybackVisualizing] = useState(false)
@@ -140,11 +139,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const initialMainIds = useRef<number[]>([])
   const initialExtraIds = useRef<number[]>([])
 
-  useEffect(() => {
-    if (history[historyIndex]) {
-      setBoard(history[historyIndex])
-    }
-  }, [historyIndex, history])
+  // Derived board state directly computed during render pass (no useEffect required)
+  const board = history[historyIndex] || history[0] || createEmptyBoard()
 
   const initBoard = useCallback((mainIds: number[], extraIds: number[], cardDataMap: Record<number, CardData | undefined>) => {
     nextInstanceId = 1
@@ -157,11 +153,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
     newBoard.extra = extraIds.map(cid => makeInstance(cid, cardDataMap[cid]))
     newBoard.lp = 4000
 
-    setBoard(newBoard)
     setCombo([])
     setPlaybackVisualizing(false)
     setHistory([newBoard])
     setHistoryIndex(0)
+    setRecording(false)
+  }, [])
+
+  const loadState = useCallback((comboSteps: ComboStep[], newHistory: BoardState[], targetIndex?: number) => {
+    setCombo(comboSteps)
+    setHistory(newHistory)
+    setHistoryIndex(targetIndex ?? (newHistory.length > 0 ? newHistory.length - 1 : 0))
+    setPlaybackVisualizing(false)
     setRecording(false)
   }, [])
 
@@ -172,18 +175,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       const nextHistory = prev.slice(0, historyIndex + 1)
       nextHistory.push(nextBoard)
-
-      if (recording) {
-        setCombo(prevCombo => {
-          const nextCombo = prevCombo.slice(0, historyIndex)
-          nextCombo.push({ a: action, ...detail, t: Date.now() })
-          return nextCombo
-        })
-      }
-
-      setTimeout(() => setHistoryIndex(nextHistory.length - 1), 0)
+      setHistoryIndex(nextHistory.length - 1)
       return nextHistory
     })
+
+    if (recording) {
+      setCombo(prevCombo => {
+        const nextCombo = prevCombo.slice(0, historyIndex)
+        nextCombo.push({ a: action, ...detail, t: Date.now() })
+        return nextCombo
+      })
+    }
   }, [historyIndex, recording])
 
   const draw = useCallback((count = 1) => {
@@ -301,7 +303,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
 
       const zoneCard = board[fromZone as keyof BoardState]
-      return zoneCard && (zoneCard as CardInstance).id === instanceId ? zoneCard : null
+      return zoneCard && typeof zoneCard === 'object' && 'id' in zoneCard && zoneCard.id === instanceId ? zoneCard : null
     })() as CardInstance | null
 
     updateBoardState(prev => {
@@ -355,57 +357,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
       prev.lp = Math.max(0, lp)
       return prev
     }, 'lp', { v: lp })
-  }, [updateBoardState])
-
-  const sendToGY = useCallback((instanceId: number, fromZone: string) => {
-    moveCard(instanceId, fromZone, 'gy')
-  }, [moveCard])
-
-  const sendToBanish = useCallback((instanceId: number, fromZone: string) => {
-    moveCard(instanceId, fromZone, 'banish')
-  }, [moveCard])
-
-  const addToHand = useCallback((instanceId: number, fromZone: string) => {
-    moveCard(instanceId, fromZone, 'hand')
-  }, [moveCard])
-
-  const returnToDeck = useCallback((instanceId: number, fromZone: string, toTop = true) => {
-    updateBoardState(prev => {
-      let card: CardInstance | null = null
-
-      if (['hand', 'gy', 'banish', 'extra', 'free'].includes(fromZone)) {
-        const arr = prev[fromZone as keyof BoardState] as CardInstance[]
-        const idx = arr.findIndex(c => c.id === instanceId)
-        if (idx !== -1) {
-          card = arr[idx]
-          arr.splice(idx, 1)
-        }
-      } else {
-        card = prev[fromZone as keyof BoardState] as CardInstance | null
-        if (card && card.id === instanceId) {
-          ; (prev as Record<string, CardInstance | null>)[fromZone] = null
-        }
-      }
-
-      if (!card) return prev
-
-      if (toTop) {
-        prev.deck.unshift(card)
-      } else {
-        prev.deck.push(card)
-      }
-      return prev
-    }, 'todeck', { i: instanceId, f: fromZone, top: toTop })
-  }, [updateBoardState])
-
-  const millCards = useCallback((count = 1) => {
-    updateBoardState(prev => {
-      const n = Math.min(count, prev.deck.length)
-      const milled = prev.deck.slice(0, n)
-      prev.deck = prev.deck.slice(n)
-      prev.gy = [...prev.gy, ...milled]
-      return prev
-    }, 'mill', { n: count })
   }, [updateBoardState])
 
   const generateToken = useCallback((targetZone = 'hand') => {
@@ -462,9 +413,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [updateBoardState])
 
   const resetBoard = useCallback(() => {
-    setBoard(createEmptyBoard())
+    const empty = createEmptyBoard()
     setCombo([])
-    setHistory([createEmptyBoard()])
+    setHistory([empty])
     setHistoryIndex(0)
     setRecording(false)
     setPlaybackVisualizing(false)
@@ -488,7 +439,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setPlaybackVisualizing(true)
       setHistoryIndex(targetHistoryIndex)
     }
-  }, [history])
+  }, [history.length])
 
   const resetCombo = useCallback(() => {
     setCombo([])
@@ -506,17 +457,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
     playbackIndex: historyIndex - 1,
     maxPlaybackIndex: combo.length - 1,
     initBoard,
+    loadState,
     draw,
     shuffleDeck,
     sortDeck,
     moveCard,
     changePosition,
     setLP,
-    sendToGY,
-    sendToBanish,
-    addToHand,
-    returnToDeck,
-    millCards,
     generateToken,
     removeToken,
     activateEffect,

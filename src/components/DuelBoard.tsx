@@ -262,19 +262,17 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
         game.moveCard(id, zone, ZONES.FIELD, POSITION.FACE_UP)
         break
       case 'to_gy':
-        game.sendToGY(id, zone)
+        game.moveCard(id, zone, ZONES.GY)
         break
       case 'to_banish':
-        game.sendToBanish(id, zone)
+        game.moveCard(id, zone, ZONES.BANISH)
         break
       case 'to_hand':
-        game.addToHand(id, zone)
+        game.moveCard(id, zone, ZONES.HAND)
         break
       case 'to_deck_top':
-        game.returnToDeck(id, zone, true)
-        break
       case 'to_deck_bottom':
-        game.returnToDeck(id, zone, false)
+        game.moveCard(id, zone, ZONES.DECK)
         break
       case 'flip_atk':
         game.changePosition(zone, POSITION.FACE_UP_ATK)
@@ -312,7 +310,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
     const stillInSource = Array.isArray(source)
       ? source.some(c => c.id === instanceId)
-      : source?.id === instanceId
+      : typeof source === 'object' && source !== null && 'id' in source && source.id === instanceId
 
     if (!stillInSource) {
       setActiveCard(null)

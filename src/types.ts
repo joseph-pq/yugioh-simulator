@@ -87,7 +87,7 @@ export interface ComboStep {
   instanceId?: number
   f?: Zone
   from?: Zone
-  to: Zone
+  to?: Zone
   z?: string
   n?: number
   v?: number
@@ -126,17 +126,13 @@ export interface GameContextValue {
   playbackIndex: number
   maxPlaybackIndex: number
   initBoard: (mainIds: number[], extraIds: number[], cardDataMap: Record<number, CardData | undefined>) => void
+  loadState: (combo: ComboStep[], history: BoardState[], index?: number) => void
   draw: (count?: number) => void
   shuffleDeck: () => void
   sortDeck: () => void
   moveCard: (instanceId: number, fromZone: string, toZone: string, position?: string) => void
   changePosition: (zone: string, newPosition: string) => void
   setLP: (lp: number) => void
-  sendToGY: (instanceId: number, fromZone: string) => void
-  sendToBanish: (instanceId: number, fromZone: string) => void
-  addToHand: (instanceId: number, fromZone: string) => void
-  returnToDeck: (instanceId: number, fromZone: string, toTop?: boolean) => void
-  millCards: (count?: number) => void
   generateToken: (targetZone?: string) => void
   removeToken: (instanceId: number, zone: string) => void
   activateEffect: (instanceId: number, zone: string) => void

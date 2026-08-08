@@ -83,16 +83,16 @@ export default function SimulatorPage() {
               state.combo.forEach(step => {
                 const next = JSON.parse(JSON.stringify(currentBoard))
                 const action = step.a
-                const fromZone: Zone = step.from || step.f
-                const toZone: Zone = step.to
+                const fromZone = step.from || step.f
+                const toZone = step.to
                 const instanceId = step.instanceId || step.i
-                const position = step.position || step.p
-                const val = step.val !== undefined ? step.val : step.v
+                const position = (step.position || step.p) as string | undefined
+                const val = step.val !== undefined ? (step.val as number) : (step.v as number | undefined)
                 const targetZone = step.to
 
                 if (action === 'move' && instanceId && fromZone && toZone) {
                   let card = null
-                  if (ARRAY_ZONES.includes(fromZone)) {
+                  if ((ARRAY_ZONES as readonly string[]).includes(fromZone)) {
                     const idx = next[fromZone].findIndex((c: CardInstance) => c.id === instanceId)
                     if (idx !== -1) {
                       card = next[fromZone][idx]
@@ -108,7 +108,7 @@ export default function SimulatorPage() {
                   console.log("Card to move:", card, "from", fromZone, "to", toZone)
                   if (card) {
                     if (position) card.position = position
-                    if (ARRAY_ZONES.includes(toZone)) {
+                    if ((ARRAY_ZONES as readonly string[]).includes(toZone)) {
                       next[toZone].push(card)
                     } else {
                       next[toZone] = card
@@ -134,23 +134,21 @@ export default function SimulatorPage() {
                   }
                   if (['hand', 'gy', 'banish', 'free', 'deck'].includes(targetZone || 'hand')) {
                     next[targetZone || 'hand'].push(tokenInstance)
-                  } else if (next[targetZone] === null) {
-                    next[targetZone] = tokenInstance
+                  } else if (next[targetZone as keyof typeof next] === null) {
+                    next[targetZone as keyof typeof next] = tokenInstance as any
                   }
                 } else if (action === 'removetoken') {
-                  if (['hand', 'gy', 'banish', 'free', 'deck'].includes(targetZone)) {
-                    next[targetZone] = next[targetZone].filter((c: CardInstance) => c.id !== instanceId)
-                  } else if (next[targetZone]?.id === instanceId) {
-                    next[targetZone] = null
+                  if (['hand', 'gy', 'banish', 'free', 'deck'].includes(targetZone || '')) {
+                    next[targetZone!] = next[targetZone!].filter((c: CardInstance) => c.id !== instanceId)
+                  } else if (next[targetZone!]?.id === instanceId) {
+                    next[targetZone!] = null
                   }
                 }
                 fullHistory.push(next)
                 currentBoard = next
               })
 
-              game.setCombo(state.combo)
-              game.setHistory(fullHistory)
-              game.setHistoryIndex(fullHistory.length - 1)
+              game.loadState(state.combo, fullHistory)
               console.log("fullHistory", fullHistory)
             }
 
