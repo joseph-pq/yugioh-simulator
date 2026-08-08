@@ -11,7 +11,7 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { useGame, POSITION, MONSTER_ZONES, SPELL_ZONES } from '../context/GameContext'
-import type { CardData, CardInstance } from '../types'
+import type { CardData, CardInstance, Phase } from '../types'
 import { ZONES } from '../types'
 import { getCardImageUrl } from '../services/ygoproApi'
 import CardContextMenu from './CardContextMenu'
@@ -341,6 +341,8 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
       <div className="flex flex-col h-full select-none justify-between overflow-hidden">
+        {/* Phase Tracker Bar */}
+        <PhaseTrackerBar phase={board.phase || 'dp'} turn={board.turn || 'player'} />
         {/* Main Duel Field Area */}
         <div className="flex-1 flex items-center justify-center p-2 min-h-0">
           <div className="flex items-center justify-center gap-3 w-full max-w-4xl">
@@ -430,7 +432,10 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
               />
               <div className="flex items-end gap-2">
                 <VerticalStackPileZone zone={ZONES.BANISH} cards={board.banish} label="BANISH" color="var(--color-accent-blue)" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
-                <SkillActionButton onClick={handleSkillClick} isActive={skillActive} />
+                <div className="flex flex-col items-center gap-2">
+                  <NextPhaseButton onClick={game.advancePhase} phase={board.phase || 'dp'} turn={board.turn || 'player'} />
+                  <SkillActionButton onClick={handleSkillClick} isActive={skillActive} />
+                </div>
               </div>
             </div>
 
@@ -763,6 +768,99 @@ function VerticalStackPileZone({ zone, cards, label, color, effectCardId, hidden
     </div>
   )
 }
+
+// ─── Phase Tracker Bar ──────────────────────────────────────────────────────
+
+const PHASE_LABELS: Record<Phase, string> = {
+  dp: 'DRAW',
+  sp: 'STANDBY',
+  mp1: 'MAIN',
+  bp: 'BATTLE',
+  ep: 'END',
+}
+const PHASE_ORDER: Phase[] = ['dp', 'sp', 'mp1', 'bp', 'ep']
+
+function PhaseTrackerBar({ phase, turn }: { phase: Phase; turn: 'player' | 'opponent' }) {
+  const isPlayer = turn === 'player'
+  const activeColor = isPlayer
+    ? 'bg-blue-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.7)]'
+    : 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.7)]'
+  const inactiveColor = isPlayer
+    ? 'bg-blue-950/40 text-blue-300/50 border border-blue-800/30'
+    : 'bg-rose-950/40 text-rose-300/50 border border-rose-800/30'
+
+  return (
+    <div className="flex items-center gap-0 px-3 py-1.5 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/60 select-none">
+      {/* Turn badge */}
+      <div
+        className={`text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-md mr-3 whitespace-nowrap transition-all duration-300 ${
+          isPlayer ? 'bg-blue-600/20 text-blue-300 border border-blue-600/40' : 'bg-rose-600/20 text-rose-300 border border-rose-600/40'
+        }`}
+      >
+        {isPlayer ? '⚔ Your Turn' : '🛡 Opp Turn'}
+      </div>
+
+      {/* Phase pills connected with arrow chevrons */}
+      <div className="flex items-center gap-0 flex-1">
+        {PHASE_ORDER.map((p, idx) => {
+          const isActive = p === phase
+          const isPast = PHASE_ORDER.indexOf(p) < PHASE_ORDER.indexOf(phase)
+          const pastColor = isPlayer
+            ? 'bg-blue-900/30 text-blue-400/60 border border-blue-800/20'
+            : 'bg-rose-900/30 text-rose-400/60 border border-rose-800/20'
+          return (
+            <div key={p} className="flex items-center">
+              {/* Phase pill */}
+              <div
+                className={`relative px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded-sm transition-all duration-300 ${
+                  isActive ? activeColor : isPast ? pastColor : inactiveColor
+                }`}
+                style={{
+                  clipPath: idx < PHASE_ORDER.length - 1
+                    ? 'polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%, 6px 50%)'
+                    : 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 6px 50%)',
+                  paddingLeft: idx === 0 ? '10px' : '14px',
+                  paddingRight: idx < PHASE_ORDER.length - 1 ? '14px' : '10px',
+                }}
+              >
+                {PHASE_LABELS[p]}
+              </div>
+              {/* Gap between pills is handled by clipPath arrow shape — no extra element needed */}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Next Phase Button ───────────────────────────────────────────────────────
+
+function NextPhaseButton({ onClick, phase, turn }: { onClick: () => void; phase: Phase; turn: 'player' | 'opponent' }) {
+  const isLastPhase = phase === 'ep'
+  const isPlayer = turn === 'player'
+
+  const label = isLastPhase
+    ? (isPlayer ? '→ Opp' : '→ Mine')
+    : '▶ Next'
+
+  const color = isLastPhase
+    ? (isPlayer ? 'bg-rose-700/80 hover:bg-rose-600 border-rose-500/60 text-rose-100' : 'bg-blue-700/80 hover:bg-blue-600 border-blue-500/60 text-blue-100')
+    : (isPlayer ? 'bg-blue-700/80 hover:bg-blue-600 border-blue-500/60 text-blue-100' : 'bg-rose-700/80 hover:bg-rose-600 border-rose-500/60 text-rose-100')
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={isLastPhase ? 'End turn, switch to opponent' : 'Advance to next phase'}
+      className={`text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md border transition-all duration-200 hover:scale-105 active:scale-95 shadow-md whitespace-nowrap ${color}`}
+    >
+      {label}
+    </button>
+  )
+}
+
+// ─── Skill Button ────────────────────────────────────────────────────────────
 
 interface SkillActionButtonProps {
   onClick: () => void

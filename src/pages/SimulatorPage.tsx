@@ -286,6 +286,9 @@ export default function SimulatorPage() {
                   } else if ((next[targetZone! as keyof BoardState] as CardInstance)?.id === instanceId) {
                     (next as Record<string, any>)[targetZone!] = null
                   }
+                } else if (action === 'phase') {
+                  if (step.phase) next.phase = step.phase as BoardState['phase']
+                  if (step.turn) next.turn = step.turn as BoardState['turn']
                 }
                 fullHistory.push(next)
                 currentBoard = next
@@ -369,7 +372,7 @@ export default function SimulatorPage() {
     const extraIds: number[] = []
 
     const collectIds = (zone: string) => {
-      const item: CardInstance[] | CardInstance | null | undefined | number = game.board[zone]
+      const item = game.board[zone] as CardInstance[] | CardInstance | null | undefined | number
       if (item) {
         if (Array.isArray(item)) {
           item.forEach(c => {

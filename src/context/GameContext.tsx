@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from 'react'
-import type { BoardState, CardData, CardInstance, ComboStep, GameContextValue } from '../types'
+import type { BoardState, CardData, CardInstance, ComboStep, GameContextValue, Phase, TurnOwner } from '../types'
 import { ZONES } from '../types'
 
 const GameContext = createContext<GameContextValue | null>(null)
@@ -110,6 +110,8 @@ export function createEmptyBoard(): BoardState {
     extra_pile: null,
     eextra_pile: null,
     lp: 4000,
+    turn: 'player',
+    phase: 'dp',
   }
 }
 
@@ -398,6 +400,33 @@ export function GameProvider({ children }: { children: ReactNode }) {
     updateBoardState(prev => prev, 'skill', {})
   }, [updateBoardState])
 
+  const advancePhase = useCallback(() => {
+    const phases: Phase[] = ['dp', 'sp', 'mp1', 'bp', 'ep']
+
+    // Compute next phase/turn from current board state first so the combo detail is correct
+    const currentBoard = history[historyIndex] || createEmptyBoard()
+    const currentPhase = currentBoard.phase || 'dp'
+    const currentTurn = currentBoard.turn || 'player'
+    const currIdx = phases.indexOf(currentPhase)
+
+    let nextPhase: Phase
+    let nextTurn: TurnOwner
+
+    if (currIdx === -1 || currIdx === phases.length - 1) {
+      nextPhase = 'dp'
+      nextTurn = currentTurn === 'player' ? 'opponent' : 'player'
+    } else {
+      nextPhase = phases[currIdx + 1]
+      nextTurn = currentTurn
+    }
+
+    updateBoardState(prev => {
+      prev.phase = nextPhase
+      prev.turn = nextTurn
+      return prev
+    }, 'phase', { phase: nextPhase, turn: nextTurn })
+  }, [updateBoardState, history, historyIndex])
+
   const removeToken = useCallback((instanceId: number, zone: string) => {
     updateBoardState(prev => {
       if (['hand', 'gy', 'banish', 'free', 'deck', 'extra'].includes(zone)) {
@@ -472,6 +501,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     removeToken,
     activateEffect,
     activateSkill,
+    advancePhase,
     resetBoard,
     resetCombo,
     startRecording,

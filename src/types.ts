@@ -23,6 +23,9 @@ export interface CardInstance {
   position?: string | null
 }
 
+export type TurnOwner = 'player' | 'opponent'
+export type Phase = 'dp' | 'sp' | 'mp1' | 'bp' | 'ep'
+
 export interface BoardState {
   hand: CardInstance[]
   m1: CardInstance | null
@@ -53,7 +56,9 @@ export interface BoardState {
   extra_pile: CardInstance | null
   eextra_pile: CardInstance | null
   lp: number
-  [key: string]: CardInstance | CardInstance[] | number | null | undefined
+  turn?: TurnOwner
+  phase?: Phase
+  [key: string]: CardInstance | CardInstance[] | number | string | null | undefined
 }
 export const ZONES = {
   HAND: 'hand',
@@ -140,6 +145,7 @@ export interface GameContextValue {
   removeToken: (instanceId: number, zone: string) => void
   activateEffect: (instanceId: number, zone: string) => void
   activateSkill: () => void
+  advancePhase: () => void
   resetBoard: () => void
   resetCombo: () => void
   startRecording: () => void
