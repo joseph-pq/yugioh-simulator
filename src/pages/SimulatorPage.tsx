@@ -10,10 +10,19 @@ import DuelBoard from '../components/DuelBoard'
 import CardDetailPanel from '../components/CardDetailPanel'
 import ComboStepList from '../components/ComboStepList'
 import type { BoardState } from '../types'
+import type { TokenInitInfo } from '../services/urlState'
 
-function extractInitialZones(board?: BoardState): Record<string, number[]> | undefined {
-  if (!board) return undefined
-  const zones: Record<string, number[]> = {}
+function isTokenCard(c: CardInstance): boolean {
+  return c.cardId === 99999999 || c.data?.type === 'Token'
+}
+
+function extractInitialStateInfo(board?: BoardState): {
+  init?: Record<string, number[]>
+  tokens?: TokenInitInfo[]
+} {
+  if (!board) return {}
+  const init: Record<string, number[]> = {}
+  const tokens: TokenInitInfo[] = []
   let hasNonDefaultPlacement = false
 
   const ALL_CHECK_ZONES = [
@@ -26,17 +35,31 @@ function extractInitialZones(board?: BoardState): Record<string, number[]> | und
   ALL_CHECK_ZONES.forEach(z => {
     const val = board[z as keyof BoardState]
     if (Array.isArray(val)) {
-      if (val.length > 0) {
-        zones[z] = val.map((c: CardInstance) => c.id)
+      val.forEach((c: CardInstance) => {
+        if (isTokenCard(c)) {
+          tokens.push({ z, i: c.id, p: c.position || undefined })
+        } else {
+          if (!init[z]) init[z] = []
+          init[z].push(c.id)
+          hasNonDefaultPlacement = true
+        }
+      })
+    } else if (val && typeof val === 'object' && 'id' in val) {
+      const c = val as CardInstance
+      if (isTokenCard(c)) {
+        tokens.push({ z, i: c.id, p: c.position || undefined })
+      } else {
+        if (!init[z]) init[z] = []
+        init[z].push(c.id)
         hasNonDefaultPlacement = true
       }
-    } else if (val && typeof val === 'object' && 'id' in val) {
-      zones[z] = [(val as CardInstance).id]
-      hasNonDefaultPlacement = true
     }
   })
 
-  return hasNonDefaultPlacement ? zones : undefined
+  return {
+    init: hasNonDefaultPlacement ? init : undefined,
+    tokens: tokens.length > 0 ? tokens : undefined,
+  }
 }
 
 export default function SimulatorPage() {
@@ -127,6 +150,30 @@ export default function SimulatorPage() {
                     }
                   }
                 })
+              })
+            }
+
+            // Re-instantiate initial tokens if state.tokens is specified
+            if (state.tokens) {
+              state.tokens.forEach(t => {
+                const tokenCard: CardInstance = {
+                  id: t.i,
+                  cardId: 99999999,
+                  position: t.p || 'face_up_atk',
+                  data: {
+                    id: 99999999,
+                    name: 'Monster Token',
+                    type: 'Token',
+                    humanType: 'Token Monster',
+                    frameType: 'token',
+                    desc: 'Monster Token',
+                  }
+                }
+                if ((ARRAY_ZONES as readonly string[]).includes(t.z)) {
+                  (initialBoard[t.z as keyof BoardState] as CardInstance[]).push(tokenCard)
+                } else {
+                  (initialBoard as Record<string, any>)[t.z] = tokenCard
+                }
               })
             }
             console.log("Initial board reconstructed:", initialBoard)
@@ -355,12 +402,14 @@ export default function SimulatorPage() {
     collectIds('field')
     collectIds('efield')
 
+    const { init, tokens } = extractInitialStateInfo(game.history[0])
     const state = {
       main: game.initialMainIds.current,
       extra: game.initialExtraIds.current,
       combo: game.combo,
       name: deckName || 'combo-deck',
-      init: extractInitialZones(game.history[0]),
+      init,
+      tokens,
     }
 
     const shareUrl = generateShareUrl(state)

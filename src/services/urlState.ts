@@ -1,12 +1,19 @@
 import LZString from 'lz-string'
 import type { ComboStep } from '../types'
 
+export interface TokenInitInfo {
+  z: string
+  i: number
+  p?: string
+}
+
 export interface ShareableState {
   main: number[]
   extra: number[]
   combo?: ComboStep[]
   name?: string
   init?: Record<string, number[]>
+  tokens?: TokenInitInfo[]
 }
 
 interface CompactState {
@@ -15,6 +22,7 @@ interface CompactState {
   cb?: ComboStep[]
   n?: string
   i?: Record<string, number[]>
+  tk?: TokenInitInfo[]
 }
 
 export function encodeState(state: ShareableState): string {
@@ -35,6 +43,10 @@ export function encodeState(state: ShareableState): string {
     compact.i = state.init
   }
 
+  if (state.tokens && state.tokens.length > 0) {
+    compact.tk = state.tokens
+  }
+
   const json = JSON.stringify(compact)
   return LZString.compressToEncodedURIComponent(json)
 }
@@ -51,6 +63,7 @@ export function decodeState(compressed: string): ShareableState | null {
       combo: compact.cb || [],
       name: compact.n || '',
       init: compact.i,
+      tokens: compact.tk,
     }
   } catch {
     return null
