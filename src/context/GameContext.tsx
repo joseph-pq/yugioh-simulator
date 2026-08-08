@@ -131,6 +131,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [recording, setRecording] = useState(false)
   const [combo, setCombo] = useState<ComboStep[]>([])
   const [playbackVisualizing, setPlaybackVisualizing] = useState(false)
+  const [playbackSpeed, setPlaybackSpeed] = useState(1)
 
   const [history, setHistory] = useState<BoardState[]>([createEmptyBoard()])
   const [historyIndex, setHistoryIndex] = useState(0)
@@ -453,6 +454,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     board,
     recording,
     playbackVisualizing,
+    playbackSpeed,
+    setPlaybackSpeed,
     combo,
     playbackIndex: historyIndex - 1,
     maxPlaybackIndex: combo.length - 1,

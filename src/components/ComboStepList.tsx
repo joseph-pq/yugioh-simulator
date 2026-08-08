@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { ComboStep } from '../types'
+import { useGame } from '../context/GameContext'
 
 export interface ComboStepListProps {
   combo: ComboStep[]
@@ -14,15 +15,15 @@ export interface ComboStepListProps {
  * step highlighting, and record reset option.
  */
 export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRecord }: ComboStepListProps) {
+  const { playbackSpeed, setPlaybackSpeed } = useGame()
   const [isPlaying, setIsPlaying] = useState(false)
-  const [speed, setSpeed] = useState(1) // Velocity multiplier (0.25x to 3.0x)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | null = null
     if (isPlaying) {
-      // Dynamic velocity calculation: base interval is 1000ms / speed
-      const intervalMs = Math.max(150, Math.round(1000 / speed))
+      // Dynamic velocity calculation: base interval is 1000ms / playbackSpeed
+      const intervalMs = Math.max(150, Math.round(1000 / playbackSpeed))
       timer = setInterval(() => {
         if (currentIndex < combo.length - 1) {
           onJumpTo?.(currentIndex + 1)
@@ -37,7 +38,7 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
     return () => {
       if (timer) clearInterval(timer)
     }
-  }, [isPlaying, currentIndex, combo.length, onJumpTo, speed])
+  }, [isPlaying, currentIndex, combo.length, onJumpTo, playbackSpeed])
 
   if (combo.length === 0) {
     return (
@@ -78,15 +79,15 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
 
         {/* Velocity / Speed Slider */}
         <div className="flex items-center justify-between gap-2 px-1 py-1 rounded bg-[var(--color-bg-primary)]/50 border border-[var(--color-border)]/50 text-[10px]">
-          <span className="text-[var(--color-text-muted)] font-mono font-semibold">⚡ Speed: {speed}x</span>
+          <span className="text-[var(--color-text-muted)] font-mono font-semibold">⚡ Speed: {playbackSpeed}x</span>
           <div className="flex items-center gap-1.5 flex-1 max-w-[150px]">
             <input
               type="range"
               min="0.25"
               max="3"
               step="0.25"
-              value={speed}
-              onChange={(e) => setSpeed(parseFloat(e.target.value))}
+              value={playbackSpeed}
+              onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
               className="w-full h-1.5 bg-[var(--color-bg-tertiary)] rounded-lg appearance-none cursor-pointer accent-[var(--color-gold-400)]"
             />
           </div>
@@ -94,9 +95,9 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
             {[0.5, 1, 2].map((s) => (
               <button
                 key={s}
-                onClick={() => setSpeed(s)}
+                onClick={() => setPlaybackSpeed(s)}
                 className={`px-1.5 py-0.5 rounded text-[9px] font-mono ${
-                  speed === s
+                  playbackSpeed === s
                     ? 'bg-[var(--color-gold-500)] text-black font-bold'
                     : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]'
                 }`}

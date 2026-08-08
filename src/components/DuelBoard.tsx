@@ -94,6 +94,11 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
       return undefined
     }
 
+    const speed = game.playbackSpeed || 1
+    const startDelay = Math.max(20, Math.round(80 / speed))
+    const animDuration = Math.max(100, Math.round(350 / speed))
+    const totalDuration = startDelay + animDuration + Math.max(20, Math.round(50 / speed))
+
     if (game.playbackIndex >= 0 && game.combo[game.playbackIndex]) {
       const step = game.combo[game.playbackIndex]
       frameId = requestAnimationFrame(() => {
@@ -137,14 +142,14 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
             animTimer = setTimeout(() => {
               setFlyingCard(prev => prev ? { ...prev, animating: true } : null)
-            }, 200)
+            }, startDelay)
 
             endTimer = setTimeout(() => {
               setFlyingCard(null)
               // Setting visualization to false makes hiddenPlaybackCardId
               // synchronously null on next render
               game.setPlaybackVisualizing(false)
-            }, 550)
+            }, totalDuration)
           }
         }
       })
@@ -155,12 +160,16 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
       if (animTimer) clearTimeout(animTimer)
       if (endTimer) clearTimeout(endTimer)
     }
-  }, [board, game.playbackIndex, game.combo, game.playbackVisualizing])
+  }, [board, game.playbackIndex, game.combo, game.playbackVisualizing, game.playbackSpeed])
 
   useEffect(() => {
     if (!game.playbackVisualizing) {
       return
     }
+    const speed = game.playbackSpeed || 1
+    const effectGlowDuration = Math.max(150, Math.round(600 / speed))
+    const skillGlowDuration = Math.max(150, Math.round(350 / speed))
+
     const glowTimers = playbackGlowTimers.current
     if (glowTimers.effect) clearTimeout(glowTimers.effect)
     if (glowTimers.skill) clearTimeout(glowTimers.skill)
@@ -178,14 +187,14 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
       setSkillActive(false)
       if (cardId) {
         setEffectCardId(cardId)
-        glowTimers.effect = setTimeout(() => setEffectCardId(null), 800)
+        glowTimers.effect = setTimeout(() => setEffectCardId(null), effectGlowDuration)
       } else {
         setEffectCardId(null)
       }
     } else if (step.a === 'skill') {
       setEffectCardId(null)
       setSkillActive(true)
-      glowTimers.skill = setTimeout(() => setSkillActive(false), 400)
+      glowTimers.skill = setTimeout(() => setSkillActive(false), skillGlowDuration)
     } else {
       setEffectCardId(null)
       setSkillActive(false)
@@ -195,7 +204,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
       if (glowTimers.effect) clearTimeout(glowTimers.effect)
       if (glowTimers.skill) clearTimeout(glowTimers.skill)
     }
-  }, [game.playbackIndex, game.combo])
+  }, [game.playbackIndex, game.combo, game.playbackSpeed])
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const { active } = event
@@ -489,12 +498,15 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
       {/* Animated Flying Drag Overlay during Record Playback */}
       {flyingCard && (
         <div
-          className="fixed z-[999] pointer-events-none transition-all duration-500 ease-in-out transform-gpu shadow-2xl rounded"
+          className="fixed z-[999] pointer-events-none transform-gpu shadow-2xl rounded"
           style={{
             left: `${flyingCard.animating ? flyingCard.end.x : flyingCard.start.x}px`,
             top: `${flyingCard.animating ? flyingCard.end.y : flyingCard.start.y}px`,
             width: 'var(--card-width)',
             height: 'var(--card-height)',
+            transition: flyingCard.animating
+              ? `left ${Math.max(100, Math.round(350 / (game.playbackSpeed || 1)))}ms ease-in-out, top ${Math.max(100, Math.round(350 / (game.playbackSpeed || 1)))}ms ease-in-out`
+              : 'none',
           }}
         >
           <img

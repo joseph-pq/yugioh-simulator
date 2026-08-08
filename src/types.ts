@@ -122,6 +122,8 @@ export interface GameContextValue {
   board: BoardState
   recording: boolean
   playbackVisualizing: boolean
+  playbackSpeed: number
+  setPlaybackSpeed: (speed: number) => void
   combo: ComboStep[]
   playbackIndex: number
   maxPlaybackIndex: number
