@@ -452,6 +452,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const value: GameContextValue = {
     board,
+    history,
     recording,
     playbackVisualizing,
     playbackSpeed,

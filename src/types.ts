@@ -120,6 +120,7 @@ export interface CardFilter {
 
 export interface GameContextValue {
   board: BoardState
+  history: BoardState[]
   recording: boolean
   playbackVisualizing: boolean
   playbackSpeed: number

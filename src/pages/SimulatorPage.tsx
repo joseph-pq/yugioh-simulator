@@ -9,6 +9,35 @@ import { readYDKFile } from '../utils/ydkParser'
 import DuelBoard from '../components/DuelBoard'
 import CardDetailPanel from '../components/CardDetailPanel'
 import ComboStepList from '../components/ComboStepList'
+import type { BoardState } from '../types'
+
+function extractInitialZones(board?: BoardState): Record<string, number[]> | undefined {
+  if (!board) return undefined
+  const zones: Record<string, number[]> = {}
+  let hasNonDefaultPlacement = false
+
+  const ALL_CHECK_ZONES = [
+    'hand', 'gy', 'egy', 'banish', 'ebanish', 'free', 'efree',
+    'm1', 'm2', 'm3', 'em1', 'em2', 'em3',
+    'st1', 'st2', 'st3', 'est1', 'est2', 'est3',
+    'field', 'efield'
+  ]
+
+  ALL_CHECK_ZONES.forEach(z => {
+    const val = board[z as keyof BoardState]
+    if (Array.isArray(val)) {
+      if (val.length > 0) {
+        zones[z] = val.map((c: CardInstance) => c.id)
+        hasNonDefaultPlacement = true
+      }
+    } else if (val && typeof val === 'object' && 'id' in val) {
+      zones[z] = [(val as CardInstance).id]
+      hasNonDefaultPlacement = true
+    }
+  })
+
+  return hasNonDefaultPlacement ? zones : undefined
+}
 
 export default function SimulatorPage() {
   const game = useGame()
@@ -70,13 +99,36 @@ export default function SimulatorPage() {
             initialBoard.deck = (state.main || []).map(cid => makeInstance(cid, map[cid]))
             initialBoard.extra = (state.extra || []).map(cid => makeInstance(cid, map[cid]))
             initialBoard.lp = 4000
-            // decrease the id of each instance by totalSize
-            initialBoard.deck.forEach((c, idx) => {
+            // Decrease the id of each instance by totalSize to match initBoard
+            initialBoard.deck.forEach((c) => {
               c.id -= totalSize
             })
-            initialBoard.extra.forEach((c, idx) => {
+            initialBoard.extra.forEach((c) => {
               c.id -= totalSize
             })
+
+            // Relocate cards to their initial zones if state.init is specified
+            if (state.init) {
+              Object.entries(state.init).forEach(([zone, instanceIds]) => {
+                instanceIds.forEach(instId => {
+                  let sourceArr = initialBoard.deck
+                  let cardIdx = sourceArr.findIndex(c => c.id === instId)
+                  if (cardIdx === -1) {
+                    sourceArr = initialBoard.extra
+                    cardIdx = sourceArr.findIndex(c => c.id === instId)
+                  }
+
+                  if (cardIdx !== -1) {
+                    const [card] = sourceArr.splice(cardIdx, 1)
+                    if ((ARRAY_ZONES as readonly string[]).includes(zone)) {
+                      (initialBoard[zone as keyof BoardState] as CardInstance[]).push(card)
+                    } else {
+                      (initialBoard as Record<string, any>)[zone] = card
+                    }
+                  }
+                })
+              })
+            }
             console.log("Initial board reconstructed:", initialBoard)
 
             // Reconstruct history if combo steps are present
@@ -95,31 +147,71 @@ export default function SimulatorPage() {
                 const targetZone = step.to
 
                 if (action === 'move' && instanceId && fromZone && toZone) {
-                  let card = null
+                  let card: CardInstance | null = null
                   if ((ARRAY_ZONES as readonly string[]).includes(fromZone)) {
-                    const idx = next[fromZone].findIndex((c: CardInstance) => c.id === instanceId)
+                    const idx = (next[fromZone as keyof BoardState] as CardInstance[]).findIndex(c => c.id === instanceId)
                     if (idx !== -1) {
-                      card = next[fromZone][idx]
-                      next[fromZone].splice(idx, 1)
+                      card = (next[fromZone as keyof BoardState] as CardInstance[])[idx]
+                      ;(next[fromZone as keyof BoardState] as CardInstance[]).splice(idx, 1)
                     } else {
                       console.warn(`Card with instanceId ${instanceId} not found in zone ${fromZone}`)
-                      console.warn(`Current ids in ${fromZone}:`, next[fromZone].map((c: CardInstance) => c.id))
                     }
                   } else {
-                    card = next[fromZone]
-                    if (card && card.id === instanceId) next[fromZone] = null
+                    card = next[fromZone as keyof BoardState] as CardInstance | null
+                    if (card && card.id === instanceId) {
+                      ;(next as Record<string, any>)[fromZone] = null
+                    }
                   }
-                  console.log("Card to move:", card, "from", fromZone, "to", toZone)
                   if (card) {
                     if (position) card.position = position
                     if ((ARRAY_ZONES as readonly string[]).includes(toZone)) {
-                      next[toZone].push(card)
+                      ;(next[toZone as keyof BoardState] as CardInstance[]).push(card)
                     } else {
-                      next[toZone] = card
+                      ;(next as Record<string, any>)[toZone] = card
                     }
                   }
+                } else if (action === 'draw') {
+                  const count = (step.n as number) || (val as number) || 1
+                  const n = Math.min(count, next.deck.length)
+                  if (n > 0) {
+                    const drawn = next.deck.slice(0, n)
+                    next.deck = next.deck.slice(n)
+                    next.hand = [...next.hand, ...drawn]
+                  }
+                } else if (action === 'shuffle') {
+                  const a = [...next.deck]
+                  for (let i = a.length - 1; i > 0; i -= 1) {
+                    const j = Math.floor(Math.random() * (i + 1))
+                    ;[a[i], a[j]] = [a[j], a[i]]
+                  }
+                  next.deck = a
+                } else if (action === 'sort') {
+                  next.deck.sort((a: CardInstance, b: CardInstance) => {
+                    const cardA = map[a.cardId]
+                    const cardB = map[b.cardId]
+                    if (!cardA || !cardB) return 0
+                    return cardA.name.localeCompare(cardB.name)
+                  })
+                } else if (action === 'reset_board') {
+                  const main: CardInstance[] = []
+                  const extra: CardInstance[] = []
+                  ARRAY_ZONES.forEach(z => {
+                    (next[z as keyof BoardState] as CardInstance[]).forEach(c => {
+                      if (c.cardId === 99999999) return
+                      if (c.data?.type?.includes('Fusion') || c.data?.type?.includes('Synchro') || c.data?.type?.includes('XYZ') || c.data?.type?.includes('Link')) {
+                        extra.push(c)
+                      } else {
+                        main.push(c)
+                      }
+                    })
+                    ;(next as Record<string, any>)[z] = []
+                  })
+                  next.deck = main
+                  next.extra = extra
                 } else if (action === 'pos' && targetZone && position) {
-                  if (next[targetZone]) next[targetZone].position = position
+                  if (next[targetZone as keyof BoardState]) {
+                    (next[targetZone as keyof BoardState] as CardInstance).position = position
+                  }
                 } else if (action === 'lp' && val !== undefined) {
                   next.lp = val
                 } else if (action === 'token') {
@@ -136,16 +228,16 @@ export default function SimulatorPage() {
                       desc: 'Monster Token',
                     }
                   }
-                  if (['hand', 'gy', 'banish', 'free', 'deck'].includes(targetZone || 'hand')) {
-                    next[targetZone || 'hand'].push(tokenInstance)
-                  } else if (next[targetZone as keyof typeof next] === null) {
-                    next[targetZone as keyof typeof next] = tokenInstance as any
+                  if (ARRAY_ZONES.includes((targetZone || 'hand') as any)) {
+                    (next[(targetZone || 'hand') as keyof BoardState] as CardInstance[]).push(tokenInstance)
+                  } else {
+                    (next as Record<string, any>)[targetZone || 'hand'] = tokenInstance
                   }
                 } else if (action === 'removetoken') {
-                  if (['hand', 'gy', 'banish', 'free', 'deck'].includes(targetZone || '')) {
-                    next[targetZone!] = next[targetZone!].filter((c: CardInstance) => c.id !== instanceId)
-                  } else if (next[targetZone!]?.id === instanceId) {
-                    next[targetZone!] = null
+                  if (ARRAY_ZONES.includes((targetZone || '') as any)) {
+                    (next[targetZone! as keyof BoardState] as CardInstance[]) = (next[targetZone! as keyof BoardState] as CardInstance[]).filter((c: CardInstance) => c.id !== instanceId)
+                  } else if ((next[targetZone! as keyof BoardState] as CardInstance)?.id === instanceId) {
+                    (next as Record<string, any>)[targetZone!] = null
                   }
                 }
                 fullHistory.push(next)
@@ -268,6 +360,7 @@ export default function SimulatorPage() {
       extra: game.initialExtraIds.current,
       combo: game.combo,
       name: deckName || 'combo-deck',
+      init: extractInitialZones(game.history[0]),
     }
 
     const shareUrl = generateShareUrl(state)

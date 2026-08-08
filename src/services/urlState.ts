@@ -6,6 +6,7 @@ export interface ShareableState {
   extra: number[]
   combo?: ComboStep[]
   name?: string
+  init?: Record<string, number[]>
 }
 
 interface CompactState {
@@ -13,6 +14,7 @@ interface CompactState {
   e: number[]
   cb?: ComboStep[]
   n?: string
+  i?: Record<string, number[]>
 }
 
 export function encodeState(state: ShareableState): string {
@@ -27,6 +29,10 @@ export function encodeState(state: ShareableState): string {
 
   if (state.name) {
     compact.n = state.name
+  }
+
+  if (state.init && Object.keys(state.init).length > 0) {
+    compact.i = state.init
   }
 
   const json = JSON.stringify(compact)
@@ -44,6 +50,7 @@ export function decodeState(compressed: string): ShareableState | null {
       extra: compact.e || [],
       combo: compact.cb || [],
       name: compact.n || '',
+      init: compact.i,
     }
   } catch {
     return null
