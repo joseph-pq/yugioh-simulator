@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import type { CardInstance, CardData, Zone } from '../types'
 import { useLocation } from 'react-router'
 import { useGame, ARRAY_ZONES, createEmptyBoard, makeInstance } from '../context/GameContext'
+import { useDeck } from '../context/DeckContext'
 import { readStateFromUrl, pushStateToUrl, generateShareUrl } from '../services/urlState'
 import { fetchAndCacheCards } from '../services/cardCache'
 import { readYDKFile } from '../utils/ydkParser'
@@ -11,6 +12,7 @@ import ComboStepList from '../components/ComboStepList'
 
 export default function SimulatorPage() {
   const game = useGame()
+  const deck = useDeck()
   const location = useLocation()
   const [selectedCard, setSelectedCard] = useState<CardData | undefined | null>(undefined)
   const [loading, setLoading] = useState(true)
@@ -20,6 +22,8 @@ export default function SimulatorPage() {
   const [mainDeck, setMainDeck] = useState<number[]>([])
   const [extraDeck, setExtraDeck] = useState<number[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Snapshot deck at mount time so the load effect runs only once
+  const deckSnapshotRef = useRef({ mainDeck: deck.mainDeck, extraDeck: deck.extraDeck, deckName: deck.deckName })
 
   const showToast = useCallback((msg: string, type: string = 'info') => {
     setToast({ msg, type })
@@ -154,9 +158,23 @@ export default function SimulatorPage() {
 
             showToast('Loaded shared combo state!', 'success')
           }
+        } else if (deckSnapshotRef.current.mainDeck.length > 0 || deckSnapshotRef.current.extraDeck.length > 0) {
+          // Load active deck built in DeckBuilder page (snapshot at mount)
+          const snap = deckSnapshotRef.current
+          setDeckName(snap.deckName || '')
+          setMainDeck(snap.mainDeck)
+          setExtraDeck(snap.extraDeck)
+          const allIds = [...snap.mainDeck, ...snap.extraDeck]
+          const cards = await fetchAndCacheCards(allIds)
+          const map = cards.reduce<Record<number, CardData>>((acc, c) => {
+            if (c) acc[c.id] = c
+            return acc
+          }, {})
+          game.initBoard(snap.mainDeck, snap.extraDeck, map)
+          showToast(`Loaded ${snap.deckName || 'deck'} (${snap.mainDeck.length} cards)`, 'success')
         } else {
-          // Default empty board
-          game.initBoard(mainDeck, extraDeck, {})
+          // No deck anywhere — show empty board
+          game.initBoard([], [], {})
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
@@ -167,7 +185,8 @@ export default function SimulatorPage() {
       }
     }
     loadInitial()
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // intentionally run only once on mount
 
   // YDK file import
   const handleFileImport = useCallback(async (file: File) => {
@@ -183,6 +202,9 @@ export default function SimulatorPage() {
         return acc
       }, {})
 
+      setMainDeck(parsed.main)
+      setExtraDeck(parsed.extra || [])
+      deck.importDeck(parsed)
       game.initBoard(parsed.main, parsed.extra || [], map)
       showToast('Deck imported successfully!', 'success')
     } catch (err) {
@@ -191,7 +213,7 @@ export default function SimulatorPage() {
     } finally {
       setImporting(false)
     }
-  }, [fetchAndCacheCards, game])
+  }, [deck, fetchAndCacheCards, game, showToast])
 
   // Drag-and-drop file support
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {

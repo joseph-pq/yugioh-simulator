@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useCacheContext } from '../context/CacheContext'
 import { useDeck } from '../context/DeckContext'
 import { searchCards as apiSearchCards, normalizeCard } from '../services/ygoproApi'
@@ -309,6 +310,17 @@ export default function DeckBuilderPage() {
             >
               🗑️ Clear
             </button>
+            <Link
+              to="/sim"
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+                deck.validation.valid && deck.mainDeck.length > 0
+                  ? 'bg-[var(--color-accent-teal)] text-white hover:bg-[var(--color-accent-teal)]/80 shadow'
+                  : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] border border-[var(--color-border)] pointer-events-none opacity-40'
+              }`}
+              title={deck.validation.valid ? 'Open simulator with this deck' : 'Deck is not valid yet'}
+            >
+              ▶ Simulate
+            </Link>
           </div>
         </div>
 
