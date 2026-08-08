@@ -214,6 +214,8 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event
     game.setPlaybackVisualizing(false)
+    setActiveCard(null)
+
     if (!over || !active.data.current) return
 
     const { instanceId, fromZone } = active.data.current as ActiveCardData
@@ -228,6 +230,10 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
     game.moveCard(instanceId, fromZone, toZone, position)
   }, [game])
+
+  const handleDragCancel = useCallback(() => {
+    setActiveCard(null)
+  }, [])
 
   const handleContextMenu = useCallback((e: React.MouseEvent, card: CardInstance, zone: string) => {
     e.preventDefault()
@@ -333,7 +339,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   }, [game])
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
       <div className="flex flex-col h-full select-none justify-between overflow-hidden">
         {/* Main Duel Field Area */}
         <div className="flex-1 flex items-center justify-center p-2 min-h-0">
