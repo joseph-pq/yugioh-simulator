@@ -21,6 +21,7 @@ export default function DeckBuilderPage() {
   // Search state
   const [query, setQuery] = useState('')
   const [filterType, setFilterType] = useState<'all' | 'monster' | 'spell' | 'trap' | 'extra'>('all')
+  const [duelLinksOnly, setDuelLinksOnly] = useState(true)
   const [searchResults, setSearchResults] = useState<CardData[]>([])
   const [searching, setSearching] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -31,7 +32,11 @@ export default function DeckBuilderPage() {
   }, [])
 
   // Execute search against API
-  const performSearch = useCallback(async (searchQuery: string, typeFilter: string) => {
+  const performSearch = useCallback(async (
+    searchQuery: string,
+    typeFilter: string,
+    dlOnly: boolean,
+  ) => {
     if (!searchQuery.trim()) {
       setSearchResults([])
       setSearching(false)
@@ -48,7 +53,7 @@ export default function DeckBuilderPage() {
       const res = await apiSearchCards({
         fname: searchQuery.trim(),
         type: apiType,
-        format: 'duel links',
+        format: dlOnly ? 'duel links' : undefined,
         num: 50,
       })
 
@@ -70,13 +75,19 @@ export default function DeckBuilderPage() {
     setQuery(val)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      performSearch(val, filterType)
+      performSearch(val, filterType, duelLinksOnly)
     }, 300)
   }
 
   const handleFilterChange = (type: 'all' | 'monster' | 'spell' | 'trap' | 'extra') => {
     setFilterType(type)
-    performSearch(query, type)
+    performSearch(query, type, duelLinksOnly)
+  }
+
+  const handleToggleDuelLinks = () => {
+    const next = !duelLinksOnly
+    setDuelLinksOnly(next)
+    if (query.trim()) performSearch(query, filterType, next)
   }
 
   const handleAddCard = useCallback((card: CardData) => {
@@ -159,6 +170,18 @@ export default function DeckBuilderPage() {
             <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
               Card Library Search
             </span>
+            <button
+              onClick={handleToggleDuelLinks}
+              title={duelLinksOnly ? 'Showing Duel Links cards only — click to search all TCG/OCG cards' : 'Showing all cards — click to limit to Duel Links'}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors border ${
+                duelLinksOnly
+                  ? 'bg-[var(--color-accent-teal)]/15 text-[var(--color-accent-teal)] border-[var(--color-accent-teal)]/40'
+                  : 'bg-[var(--color-bg-primary)] text-[var(--color-text-muted)] border-[var(--color-border)] hover:border-[var(--color-gold-500)]'
+              }`}
+            >
+              <span>{duelLinksOnly ? '🔒' : '🌐'}</span>
+              <span>{duelLinksOnly ? 'DL Only' : 'All Cards'}</span>
+            </button>
           </div>
 
           {/* Search bar */}
@@ -167,7 +190,7 @@ export default function DeckBuilderPage() {
               type="text"
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
-              placeholder="Search Duel Links cards..."
+              placeholder={duelLinksOnly ? 'Search Duel Links cards...' : 'Search all Yu-Gi-Oh! cards...'}
               className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-gold-400)] transition-colors"
             />
             <span className="absolute left-2.5 top-1.5 text-xs text-[var(--color-text-muted)]">🔍</span>

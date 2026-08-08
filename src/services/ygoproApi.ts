@@ -114,7 +114,7 @@ export async function searchCards(params: SearchParams = {}): Promise<SearchResu
     attribute,
     level,
     archetype,
-    format = 'duel links',
+    format,
     num = 30,
     offset = 0,
   } = params
