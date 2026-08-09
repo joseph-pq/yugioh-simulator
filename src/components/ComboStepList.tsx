@@ -17,6 +17,7 @@ export interface ComboStepListProps {
 export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRecord }: ComboStepListProps) {
   const { playbackSpeed, setPlaybackSpeed } = useGame()
   const [isPlaying, setIsPlaying] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -63,12 +64,7 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
             </span>
             {/* Reset Record Option */}
             <button
-              onClick={() => {
-                if (window.confirm('Are you sure you want to reset/clear the recorded combo steps?')) {
-                  setIsPlaying(false)
-                  onResetRecord?.()
-                }
-              }}
+              onClick={() => setShowResetConfirm(true)}
               className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 text-[10px] font-semibold border border-rose-500/30 transition-colors"
               title="Reset Record"
             >
@@ -175,6 +171,56 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
           </button>
         ))}
       </div>
+
+      {/* Custom Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200 select-none"
+          onClick={() => setShowResetConfirm(false)}
+        >
+          <div
+            className="bg-[var(--color-bg-secondary)] border border-rose-500/40 rounded-xl p-5 shadow-[0_0_35px_rgba(244,63,94,0.3)] max-w-sm w-full font-sans flex flex-col gap-4 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-xl text-rose-400 shrink-0">
+                ⚠️
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[var(--color-text-primary)]">Clear Recorded Combo?</h3>
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed bg-[var(--color-bg-primary)]/60 p-3 rounded-lg border border-[var(--color-border)]">
+              Are you sure you want to clear all <span className="font-bold text-rose-400 font-mono">{combo.length}</span> recorded combo steps? The board history will be reset to step 0.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="px-3.5 py-1.5 rounded-lg bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-hover)] text-xs font-semibold text-[var(--color-text-secondary)] border border-[var(--color-border)] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetConfirm(false)
+                  setIsPlaying(false)
+                  onResetRecord?.()
+                }}
+                className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-xs font-bold text-white shadow-[0_0_15px_rgba(244,63,94,0.4)] transition-all active:scale-95 flex items-center gap-1.5"
+              >
+                🗑️ Clear Combo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
