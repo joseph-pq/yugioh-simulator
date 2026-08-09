@@ -364,6 +364,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [updateBoardState])
 
   const generateToken = useCallback((targetZone = 'hand') => {
+    let createdId = 0
     updateBoardState(prev => {
       const tokenInstance = makeInstance(99999999, {
         id: 99999999,
@@ -378,8 +379,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         level: 1,
         desc: 'This card can be used as any Monster Token.',
       })
+      createdId = tokenInstance.id
 
-      if (['hand', 'gy', 'banish', 'free', 'deck'].includes(targetZone)) {
+      if ((ARRAY_ZONES as readonly string[]).includes(targetZone)) {
         ; (prev[targetZone as keyof BoardState] as CardInstance[]).push(tokenInstance)
       } else {
         const existing = prev[targetZone as keyof BoardState] as CardInstance | null
@@ -390,7 +392,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
       }
       return prev
-    }, 'token', { to: targetZone })
+    }, 'token', { to: targetZone, i: createdId })
   }, [updateBoardState])
 
   const activateEffect = useCallback((instanceId: number, zone: string) => {
@@ -430,12 +432,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const removeToken = useCallback((instanceId: number, zone: string) => {
     updateBoardState(prev => {
-      if (['hand', 'gy', 'banish', 'free', 'deck', 'extra'].includes(zone)) {
+      if ((ARRAY_ZONES as readonly string[]).includes(zone)) {
         const arr = prev[zone as keyof BoardState] as CardInstance[]
-        prev[zone as keyof BoardState] = arr.filter(c => c.id !== instanceId) as unknown as BoardState[keyof BoardState]
+        if (Array.isArray(arr)) {
+          let idx = arr.findIndex(c => c.id === instanceId)
+          if (idx === -1) {
+            idx = arr.findIndex(c => isToken(c))
+          }
+          if (idx !== -1) {
+            arr.splice(idx, 1)
+          }
+        }
       } else {
         const current = prev[zone as keyof BoardState] as CardInstance | null
-        if (current?.id === instanceId) {
+        if (current && (current.id === instanceId || isToken(current))) {
           ; (prev as Record<string, CardInstance | null>)[zone] = null
         }
       }

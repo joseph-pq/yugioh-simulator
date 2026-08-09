@@ -272,7 +272,7 @@ export default function SimulatorPage() {
                   next.lp = val
                 } else if (action === 'token') {
                   const tokenInstance = {
-                    id: Date.now() + Math.random(),
+                    id: instanceId || (Date.now() + Math.random()),
                     cardId: 99999999,
                     position: 'face_up_atk',
                     data: {
@@ -290,10 +290,22 @@ export default function SimulatorPage() {
                     (next as Record<string, any>)[targetZone || 'hand'] = tokenInstance
                   }
                 } else if (action === 'removetoken') {
-                  if (ARRAY_ZONES.includes((targetZone || '') as any)) {
-                    (next[targetZone! as keyof BoardState] as CardInstance[]) = (next[targetZone! as keyof BoardState] as CardInstance[]).filter((c: CardInstance) => c.id !== instanceId)
-                  } else if ((next[targetZone! as keyof BoardState] as CardInstance)?.id === instanceId) {
-                    (next as Record<string, any>)[targetZone!] = null
+                  if (targetZone && ARRAY_ZONES.includes(targetZone as any)) {
+                    const arr = next[targetZone as keyof BoardState] as CardInstance[]
+                    if (Array.isArray(arr)) {
+                      let idx = instanceId ? arr.findIndex((c: CardInstance) => c.id === instanceId) : -1
+                      if (idx === -1) {
+                        idx = arr.findIndex((c: CardInstance) => isTokenCard(c))
+                      }
+                      if (idx !== -1) {
+                        arr.splice(idx, 1)
+                      }
+                    }
+                  } else if (targetZone) {
+                    const current = next[targetZone as keyof BoardState] as CardInstance | null
+                    if (current && (current.id === instanceId || isTokenCard(current))) {
+                      (next as Record<string, any>)[targetZone] = null
+                    }
                   }
                 } else if (action === 'phase') {
                   if (step.phase) next.phase = step.phase as BoardState['phase']
@@ -535,13 +547,7 @@ export default function SimulatorPage() {
             </div>
           </div>
 
-          {/* Token Generation Button */}
-          <button
-            onClick={() => game.generateToken('hand')}
-            className="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow active:scale-95 flex items-center justify-center gap-1.5"
-          >
-            <span>✨</span> Spawn Monster Token
-          </button>
+
           <button
             onClick={game.returnAllToDecks}
             className="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow active:scale-95 flex items-center justify-center gap-1.5"

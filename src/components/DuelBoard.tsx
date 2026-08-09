@@ -182,10 +182,11 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
       return undefined
     }
 
-    if (step.a === 'effect' || step.a === 'pos') {
+    if (step.a === 'effect' || step.a === 'pos' || step.a === 'token' || step.a === 'removetoken') {
       let cardId = step.i || step.instanceId
-      if (!cardId && step.z) {
-        const zoneCard = (board as Record<string, unknown>)[step.z as string] as CardInstance | null
+      if (!cardId && (step.z || step.to)) {
+        const targetZone = (step.z || step.to) as string
+        const zoneCard = (board as Record<string, unknown>)[targetZone] as CardInstance | null
         cardId = zoneCard?.id
       }
       setSkillActive(false)
@@ -224,6 +225,11 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
     const { instanceId, fromZone } = active.data.current as ActiveCardData
     const toZone = String(over.id)
+
+    if (fromZone === 'token_generator') {
+      game.generateToken(toZone)
+      return
+    }
 
     if (fromZone === toZone) return
 
@@ -318,18 +324,16 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   }, [board, game])
 
   useEffect(() => {
-    // Handles the case where a card is dragged and dropped outside of any
-    // valid zone, effectively "canceling" the drag.
-    // Perhaps there is a better way to handle this with dnd-kit, but this
-    // works for now.
     if (!activeCard) return
 
     const { instanceId, fromZone } = activeCard
-    const source = board[fromZone]
+    if (fromZone === 'token_generator') return
+
+    const source = (board as Record<string, unknown>)[fromZone]
 
     const stillInSource = Array.isArray(source)
-      ? source.some(c => c.id === instanceId)
-      : typeof source === 'object' && source !== null && 'id' in source && source.id === instanceId
+      ? source.some((c: any) => c.id === instanceId)
+      : typeof source === 'object' && source !== null && 'id' in source && (source as any).id === instanceId
 
     if (!stillInSource) {
       setActiveCard(null)
@@ -446,9 +450,9 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
           </div>
         </div>
 
-        {/* Hand & Extra Deck Pools */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 px-3 py-1.5 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50">
-          <div className="col-span-1 border border-dashed border-[var(--color-accent-blue)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5">
+        {/* Hand, Extra Deck & Token Generator Pools */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 px-3 py-1.5 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50">
+          <div className="col-span-1 md:col-span-4 border border-dashed border-[var(--color-accent-blue)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5">
             <div className="text-[10px] font-bold text-[var(--color-accent-blue)] mb-0.5 uppercase tracking-wider">Hand ({board.hand.length})</div>
             <HorizontalStackPileZone
               zone={ZONES.HAND}
@@ -461,7 +465,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
             />
           </div>
 
-          <div className="col-span-2 border border-dashed border-[var(--color-accent-purple)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5">
+          <div className="col-span-1 md:col-span-6 border border-dashed border-[var(--color-accent-purple)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5">
             <div className="text-[10px] font-bold text-[var(--color-accent-purple)] mb-0.5 uppercase tracking-wider">Extra Deck ({board.extra.length})</div>
             <HorizontalStackPileZone
               zone={ZONES.EXTRA}
@@ -472,6 +476,14 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
               onHoverCard={onHoverCard}
               activeCard={activeCard}
             />
+          </div>
+
+          <div className="col-span-1 md:col-span-2 border border-dashed border-amber-500/40 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5 flex flex-col justify-between">
+            <div className="text-[10px] font-bold text-amber-400 mb-0.5 uppercase tracking-wider flex items-center justify-between">
+              <span>✨ Tokens</span>
+              <span className="text-[11px] font-mono text-amber-300 font-extrabold">∞</span>
+            </div>
+            <TokenGeneratorBox onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
           </div>
         </div>
 
@@ -769,6 +781,61 @@ function VerticalStackPileZone({ zone, cards, label, color, effectCardId, hidden
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Token Generator Box ───────────────────────────────────────────────────
+
+const TOKEN_DATA: CardData = {
+  id: 99999999,
+  name: 'Monster Token',
+  type: 'Token',
+  humanType: 'Token Monster',
+  frameType: 'token',
+  race: 'Cyberse',
+  attribute: 'LIGHT',
+  atk: 0,
+  def: 0,
+  level: 1,
+  desc: 'This card can be used as any Monster Token. Drag into any zone or pile to generate a token.',
+}
+
+function TokenGeneratorBox({ onSelectCard, onHoverCard }: { onSelectCard?: (card?: CardData) => void; onHoverCard?: (card?: CardData) => void }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: 'token-generator-card',
+    data: {
+      instanceId: 99999999,
+      cardId: 99999999,
+      fromZone: 'token_generator',
+      data: TOKEN_DATA,
+    },
+  })
+
+  return (
+    <div className="flex items-center justify-center flex-1 py-0.5">
+      <div
+        ref={setNodeRef}
+        {...attributes}
+        {...listeners}
+        className={`relative cursor-grab active:cursor-grabbing transition-all duration-200 group rounded transform-gpu ${
+          isDragging ? 'opacity-40 scale-95' : 'hover:-translate-y-1 hover:shadow-[0_0_12px_rgba(245,158,11,0.5)]'
+        }`}
+        onClick={() => onSelectCard?.(TOKEN_DATA)}
+        onMouseEnter={() => onHoverCard?.(TOKEN_DATA)}
+      >
+        <img
+          src={getCardImageUrl(99999999, 'small')}
+          alt="Monster Token"
+          className="w-[52px] h-[72px] object-cover rounded border border-amber-400/60 shadow"
+        />
+        <div className="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-950 font-black text-[10px] w-4 h-4 rounded-full flex items-center justify-center shadow-md border border-amber-300">
+          ∞
+        </div>
+        <div className="absolute inset-x-0 bottom-0 bg-black/75 text-[8px] text-amber-200 font-bold text-center py-0.5 rounded-b opacity-95 group-hover:bg-amber-600 group-hover:text-black transition-colors">
+          DRAG
+        </div>
+      </div>
     </div>
   )
 }
