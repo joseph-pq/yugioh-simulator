@@ -346,14 +346,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [board, updateBoardState])
 
   const changePosition = useCallback((zone: string, newPosition: string) => {
+    const card = (board[zone as keyof BoardState] as CardInstance | null)
     updateBoardState(prev => {
       const current = prev[zone as keyof BoardState] as CardInstance | null
       if (current) {
         current.position = newPosition
       }
       return prev
-    }, 'pos', { z: zone, p: newPosition })
-  }, [updateBoardState])
+    }, 'pos', { z: zone, p: newPosition, i: card?.id, cardId: card?.cardId })
+  }, [board, updateBoardState])
 
   const setLP = useCallback((lp: number) => {
     updateBoardState(prev => {

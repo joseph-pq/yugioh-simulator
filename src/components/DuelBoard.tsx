@@ -182,8 +182,12 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
       return undefined
     }
 
-    if (step.a === 'effect') {
-      const cardId = step.i || step.instanceId
+    if (step.a === 'effect' || step.a === 'pos') {
+      let cardId = step.i || step.instanceId
+      if (!cardId && step.z) {
+        const zoneCard = (board as Record<string, unknown>)[step.z as string] as CardInstance | null
+        cardId = zoneCard?.id
+      }
       setSkillActive(false)
       if (cardId) {
         setEffectCardId(cardId)

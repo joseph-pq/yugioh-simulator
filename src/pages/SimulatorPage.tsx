@@ -191,7 +191,7 @@ export default function SimulatorPage() {
                 const instanceId = step.instanceId || step.i
                 const position = (step.position || step.p) as string | undefined
                 const val = step.val !== undefined ? (step.val as number) : (step.v as number | undefined)
-                const targetZone = step.to
+                const targetZone = step.to || (step.z as string | undefined) || (step.zone as string | undefined) || (step.f as string | undefined) || (step.from as string | undefined)
 
                 if (action === 'move' && instanceId && fromZone && toZone) {
                   let card: CardInstance | null = null
@@ -256,8 +256,17 @@ export default function SimulatorPage() {
                   next.deck = main
                   next.extra = extra
                 } else if (action === 'pos' && targetZone && position) {
-                  if (next[targetZone as keyof BoardState]) {
-                    (next[targetZone as keyof BoardState] as CardInstance).position = position
+                  if ((ARRAY_ZONES as readonly string[]).includes(targetZone)) {
+                    const arr = next[targetZone as keyof BoardState] as CardInstance[]
+                    if (Array.isArray(arr)) {
+                      const card = instanceId ? arr.find(c => c.id === instanceId) : arr[arr.length - 1]
+                      if (card) card.position = position
+                    }
+                  } else {
+                    const card = next[targetZone as keyof BoardState] as CardInstance | null
+                    if (card && typeof card === 'object' && 'position' in card) {
+                      card.position = position
+                    }
                   }
                 } else if (action === 'lp' && val !== undefined) {
                   next.lp = val
