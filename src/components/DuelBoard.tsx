@@ -11,13 +11,17 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { useGame, POSITION, MONSTER_ZONES, SPELL_ZONES } from '../context/GameContext'
-import type { CardData, CardInstance, Phase } from '../types'
+import type { BoardState, CardData, CardInstance, Phase } from '../types'
 import { ZONES } from '../types'
 import { getCardImageUrl } from '../services/ygoproApi'
 import CardContextMenu from './CardContextMenu'
 import skillIcon from '../assets/skill.png'
 
 const FIELD_NATURAL_WIDTH = 720
+const HORIZONTAL_STACK_ZONES = new Set<string>([ZONES.HAND, ZONES.DECK, ZONES.EXTRA])
+const HORIZONTAL_LAYOUT_CARD_WIDTH = 56
+const HORIZONTAL_AVAILABLE_WIDTH = 1100
+const HORIZONTAL_GAP = 3
 
 export interface DuelBoardProps {
   onSelectCard?: (card?: CardData) => void
@@ -44,6 +48,46 @@ interface ActiveCardData {
   cardId: number
   fromZone: string
   data?: CardData
+}
+
+function getHorizontalStackStep(cards: CardInstance[], renderedCardWidth: number): number {
+  let layoutStep = HORIZONTAL_LAYOUT_CARD_WIDTH + HORIZONTAL_GAP
+
+  if (cards.length > 1 && HORIZONTAL_LAYOUT_CARD_WIDTH * cards.length > HORIZONTAL_AVAILABLE_WIDTH) {
+    layoutStep = Math.max(
+      8,
+      Math.floor((HORIZONTAL_AVAILABLE_WIDTH - HORIZONTAL_LAYOUT_CARD_WIDTH) / (cards.length - 1))
+    )
+  }
+
+  return renderedCardWidth + layoutStep - HORIZONTAL_LAYOUT_CARD_WIDTH
+}
+
+function getCardSlotPosition(zone: string, cards: CardInstance[], cardId: number): { x: number; y: number } | null {
+  if (!HORIZONTAL_STACK_ZONES.has(zone)) return null
+
+  const cardIndex = cards.findIndex(card => card.id === cardId)
+  const zoneElement = document.getElementById(`zone-${zone}`)
+  if (cardIndex === -1 || !zoneElement) return null
+
+  const anchor = cards.find(card => card.id !== cardId && document.getElementById(`card-${card.id}`))
+  const anchorElement = anchor ? document.getElementById(`card-${anchor.id}`) : null
+  const renderedCardWidth = anchorElement?.getBoundingClientRect().width || 60
+  const zoneRect = zoneElement.getBoundingClientRect()
+  const step = getHorizontalStackStep(cards, renderedCardWidth)
+
+  return {
+    x: zoneRect.left + cardIndex * step,
+    y: zoneRect.top,
+  }
+}
+
+function getZoneCenterPosition(zoneElement: HTMLElement): { x: number; y: number } {
+  const rect = zoneElement.getBoundingClientRect()
+  return {
+    x: rect.left + rect.width / 2 - 30,
+    y: rect.top + rect.height / 2 - 43.5,
+  }
 }
 
 /**
@@ -129,20 +173,21 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
           const toEl = document.getElementById(`zone-${toZone}`)
 
           if (fromEl && toEl) {
-            const startRect = fromEl.getBoundingClientRect()
-            const endRect = toEl.getBoundingClientRect()
+            const previousBoard = game.history[game.playbackIndex]
+            const sourceCards = previousBoard?.[fromZone as keyof BoardState]
+            const targetCards = board[toZone as keyof BoardState]
+            const start = Array.isArray(sourceCards)
+              ? getCardSlotPosition(fromZone, sourceCards, cardId) || getZoneCenterPosition(fromEl)
+              : getZoneCenterPosition(fromEl)
+            const end = Array.isArray(targetCards)
+              ? getCardSlotPosition(toZone, targetCards, cardId) || getZoneCenterPosition(toEl)
+              : getZoneCenterPosition(toEl)
 
             setFlyingCard({
               id: cardId,
               cardId: cardImgId,
-              start: {
-                x: startRect.left + startRect.width / 2 - (60/2),
-                y: startRect.top + startRect.height / 2 - (87/2),
-              },
-              end: {
-                x: endRect.left + endRect.width / 2 - (60/2),
-                y: endRect.top + endRect.height / 2 - (87/2),
-              },
+              start,
+              end,
               animating: false,
             })
 
@@ -668,9 +713,9 @@ function HorizontalStackPileZone({
 
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null)
 
-  const cardWidth = 56
-  const availableWidth = 1100 // adjust to container
-  const gap = 3
+  const cardWidth = HORIZONTAL_LAYOUT_CARD_WIDTH
+  const availableWidth = HORIZONTAL_AVAILABLE_WIDTH
+  const gap = HORIZONTAL_GAP
 
   let stepOffset = cardWidth + gap
 
