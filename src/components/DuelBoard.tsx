@@ -494,6 +494,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
               zone={ZONES.HAND}
               cards={board.hand}
               effectCardId={effectCardId}
+              hiddenCardId={hiddenPlaybackCardId}
               onContextMenu={handleContextMenu}
               onSelectCard={onSelectCard}
               onHoverCard={onHoverCard}
@@ -507,6 +508,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
               zone={ZONES.EXTRA}
               cards={board.extra}
               effectCardId={effectCardId}
+              hiddenCardId={hiddenPlaybackCardId}
               onContextMenu={handleContextMenu}
               onSelectCard={onSelectCard}
               onHoverCard={onHoverCard}
