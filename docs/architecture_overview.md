@@ -41,6 +41,8 @@ yugioh-simulator/
 │   │   └── urlState.ts         # LZ-String state encoding/decoding for shareable URLs
 │   ├── utils/
 │   │   └── ydkParser.ts        # .ydk file parsing, export, & Duel Links deck validation rules
+│   ├── hooks/
+│   │   └── useMediaQuery.ts    # Viewport breakpoint helper for simulator layout
 │   ├── components/
 │   │   ├── Layout.tsx          # Top navigation bar with status indicator
 │   │   ├── CardThumbnail.tsx   # Card image thumbnail with hover previews & badges
@@ -108,6 +110,13 @@ yugioh-simulator/
   - Clicking the top-right card thumbnail opens a full-screen image modal.
 - **`CardContextMenu.tsx`**:
   - Provides right-click contextual actions depending on card zone and position (e.g., Flip ATK/DEF, Set Face-Down, Activate Effect, Remove Token).
+
+### 7. Mobile simulator layout
+- Below `768px`, [SimulatorPage.tsx](../src/pages/SimulatorPage.tsx) auto-collapses the left (card details / LP) and right (combo recorder) columns so the duel field and card rows fill the viewport.
+- A compact toolbar exposes **LP**, **Card**, **Combo**, and **Expand/Collapse panels**. Expanding panels restores the three-column desktop layout (horizontal scroll on narrow screens). A manual toggle works at any width; auto-sync to the breakpoint stops after the user toggles in that session.
+- Collapsed panels open as full-width bottom drawers (`85dvh`) over a dimmed backdrop. Selecting a card on the collapsed layout opens the card drawer (hover is disabled while collapsed).
+- [DuelBoard.tsx](../src/components/DuelBoard.tsx) scales the fixed-size field with `transform: scale` based on container width (`min(1, width / 720)`). Hand, Extra, and Tokens stay in one compact 12-column row instead of stacking.
+- [Layout.tsx](../src/components/Layout.tsx) shortens the nav on small screens (hides title and Ready chip).
 
 ---
 

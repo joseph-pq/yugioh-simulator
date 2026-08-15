@@ -17,6 +17,8 @@ import { getCardImageUrl } from '../services/ygoproApi'
 import CardContextMenu from './CardContextMenu'
 import skillIcon from '../assets/skill.png'
 
+const FIELD_NATURAL_WIDTH = 720
+
 export interface DuelBoardProps {
   onSelectCard?: (card?: CardData) => void
   onHoverCard?: (card?: CardData) => void
@@ -58,6 +60,10 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   const [effectCardId, setEffectCardId] = useState<number | null>(null) // Glow ONLY when effect is activated
   const [skillActive, setSkillActive] = useState(false)
   const [flyingCard, setFlyingCard] = useState<FlyingCardState | null>(null)
+  const fieldWrapRef = useRef<HTMLDivElement>(null)
+  const fieldInnerRef = useRef<HTMLDivElement>(null)
+  const [fieldScale, setFieldScale] = useState(1)
+  const [scaledFieldHeight, setScaledFieldHeight] = useState<number | undefined>()
   const playbackGlowTimers = useRef<{
     effect: ReturnType<typeof setTimeout> | null
     skill: ReturnType<typeof setTimeout> | null
@@ -346,14 +352,43 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
     setTimeout(() => setSkillActive(false), 400)
   }, [game])
 
+  useEffect(() => {
+    const wrap = fieldWrapRef.current
+    const inner = fieldInnerRef.current
+    if (!wrap || !inner) return
+
+    const updateScale = () => {
+      const scale = Math.min(1, wrap.clientWidth / FIELD_NATURAL_WIDTH)
+      setFieldScale(scale)
+      setScaledFieldHeight(inner.offsetHeight * scale)
+    }
+
+    updateScale()
+    const ro = new ResizeObserver(updateScale)
+    ro.observe(wrap)
+    return () => ro.disconnect()
+  }, [])
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
       <div className="flex flex-col h-full select-none justify-between overflow-hidden">
         {/* Phase Tracker Bar */}
         <PhaseTrackerBar phase={board.phase || 'dp'} turn={board.turn || 'player'} />
         {/* Main Duel Field Area */}
-        <div className="flex-1 flex items-center justify-center p-2 min-h-0">
-          <div className="flex items-center justify-center gap-3 w-full max-w-4xl">
+        <div ref={fieldWrapRef} className="flex-1 flex items-start justify-center p-2 min-h-0 overflow-hidden">
+          <div
+            className="w-full flex justify-center overflow-hidden"
+            style={{ height: scaledFieldHeight }}
+          >
+          <div
+            ref={fieldInnerRef}
+            className="flex items-center justify-center gap-3"
+            style={{
+              width: FIELD_NATURAL_WIDTH,
+              transform: `scale(${fieldScale})`,
+              transformOrigin: 'top center',
+            }}
+          >
 
             <div className="flex flex-col justify-between gap-3 h-[480px]">
               <VerticalStackPileZone zone={ZONES.EBANISH} cards={board.ebanish} label="BANISH" color="var(--color-accent-blue)" effectCardId={effectCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
@@ -448,11 +483,12 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
             </div>
 
           </div>
+          </div>
         </div>
 
         {/* Hand, Extra Deck & Token Generator Pools */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 px-3 py-1.5 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50">
-          <div className="col-span-1 md:col-span-4 border border-dashed border-[var(--color-accent-blue)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5">
+        <div className="grid grid-cols-12 gap-2 px-2 sm:px-3 py-1.5 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50">
+          <div className="col-span-5 sm:col-span-4 border border-dashed border-[var(--color-accent-blue)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5 min-w-0">
             <div className="text-[10px] font-bold text-[var(--color-accent-blue)] mb-0.5 uppercase tracking-wider">Hand ({board.hand.length})</div>
             <HorizontalStackPileZone
               zone={ZONES.HAND}
@@ -465,7 +501,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
             />
           </div>
 
-          <div className="col-span-1 md:col-span-6 border border-dashed border-[var(--color-accent-purple)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5">
+          <div className="col-span-5 sm:col-span-6 border border-dashed border-[var(--color-accent-purple)]/30 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5 min-w-0">
             <div className="text-[10px] font-bold text-[var(--color-accent-purple)] mb-0.5 uppercase tracking-wider">Extra Deck ({board.extra.length})</div>
             <HorizontalStackPileZone
               zone={ZONES.EXTRA}
@@ -478,7 +514,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
             />
           </div>
 
-          <div className="col-span-1 md:col-span-2 border border-dashed border-amber-500/40 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5 flex flex-col justify-between">
+          <div className="col-span-2 border border-dashed border-amber-500/40 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5 flex flex-col justify-between min-w-0">
             <div className="text-[10px] font-bold text-amber-400 mb-0.5 uppercase tracking-wider flex items-center justify-between">
               <span>✨ Tokens</span>
               <span className="text-[11px] font-mono text-amber-300 font-extrabold">∞</span>

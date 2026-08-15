@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import type { CardInstance, CardData, Zone } from '../types'
+import type { CardInstance, CardData, GameContextValue } from '../types'
 import { useLocation } from 'react-router'
 import { useGame, ARRAY_ZONES, createEmptyBoard, makeInstance } from '../context/GameContext'
 import { useDeck } from '../context/DeckContext'
@@ -11,6 +11,7 @@ import CardDetailPanel from '../components/CardDetailPanel'
 import ComboStepList from '../components/ComboStepList'
 import type { BoardState } from '../types'
 import type { TokenInitInfo } from '../services/urlState'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 
 function isTokenCard(c: CardInstance): boolean {
   return c.cardId === 99999999 || c.data?.type === 'Token'
@@ -67,6 +68,10 @@ export default function SimulatorPage() {
   const deck = useDeck()
   const location = useLocation()
   const [selectedCard, setSelectedCard] = useState<CardData | undefined | null>(undefined)
+  const isMobile = useMediaQuery('(max-width: 767px)')
+  const userToggledPanelsRef = useRef(false)
+  const [panelsCollapsed, setPanelsCollapsed] = useState(isMobile)
+  const [openDrawer, setOpenDrawer] = useState<'card' | 'combo' | null>(null)
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
   const [toast, setToast] = useState<{ msg: string, type: string } | null>(null)
@@ -81,6 +86,23 @@ export default function SimulatorPage() {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 3000)
   }, [])
+
+  useEffect(() => {
+    if (!userToggledPanelsRef.current) {
+      setPanelsCollapsed(isMobile)
+    }
+  }, [isMobile])
+
+  const togglePanels = useCallback(() => {
+    userToggledPanelsRef.current = true
+    setOpenDrawer(null)
+    setPanelsCollapsed((prev) => !prev)
+  }, [])
+
+  const handleSelectCard = useCallback((card?: CardData) => {
+    setSelectedCard(card)
+    if (panelsCollapsed && card) setOpenDrawer('card')
+  }, [panelsCollapsed])
 
   // Parse state from URL hash on load
   useEffect(() => {
@@ -497,160 +519,268 @@ export default function SimulatorPage() {
     )
   }
 
+  const cardPanel = (
+    <CardStatsPanel
+      game={game}
+      selectedCard={selectedCard}
+      onClearCard={() => setSelectedCard(null)}
+    />
+  )
+
+  const comboPanel = (
+    <ComboRecorderPanel game={game} onShare={handleShare} />
+  )
+
   return (
-    <div className="flex h-[calc(100dvh-56px)] overflow-hidden">
-      {/* Left Column: Card Details & Game Stats Panel */}
-      <div className="w-80 flex-shrink-0 flex flex-col bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] overflow-hidden">
-        {/* LP & Game Stats Column */}
-        <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex flex-col gap-2.5">
-          {/* LP Counter Row */}
-          <div className="flex items-center justify-between bg-[var(--color-bg-primary)] p-2 rounded-lg border border-[var(--color-border)] shadow-inner">
-            <span className="text-xs font-bold text-[var(--color-gold-400)] uppercase tracking-wider">Life Points</span>
-            <div className="flex items-center gap-1.5">
+    <div className={`flex h-[calc(100dvh-56px)] ${panelsCollapsed ? 'overflow-hidden' : 'overflow-x-auto overflow-y-hidden'}`}>
+      {!panelsCollapsed && (
+        <div className="w-80 flex-shrink-0 flex flex-col bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] overflow-hidden">
+          {cardPanel}
+        </div>
+      )}
+
+      <div className={`flex-1 min-w-0 bg-[var(--color-bg-primary)] relative overflow-hidden flex flex-col ${!panelsCollapsed ? 'min-w-[640px] border-r border-[var(--color-border)]' : ''}`}>
+        <div className="flex-shrink-0 flex items-center gap-1.5 px-2 py-1.5 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/80">
+          {panelsCollapsed && (
+            <>
+              <span className="text-[10px] font-bold text-[var(--color-gold-400)] uppercase tracking-wider">LP</span>
+              <span className="text-sm font-mono font-extrabold text-yellow-400 min-w-[42px]">{game.board.lp}</span>
+              {game.recording && (
+                <span className="flex items-center gap-1 text-[10px] text-[var(--color-accent-rose)] font-bold animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent-rose)]" />
+                  REC
+                </span>
+              )}
               <button
-                onClick={() => game.setLP(Math.max(0, game.board.lp - 500))}
-                className="w-6 h-6 rounded bg-[var(--color-bg-tertiary)] hover:bg-red-950 text-red-400 border border-red-800/40 text-xs font-bold transition-colors flex items-center justify-center"
-                title="-500 LP"
+                type="button"
+                onClick={() => setOpenDrawer((d) => d === 'card' ? null : 'card')}
+                className={`px-2.5 py-1 rounded text-[11px] font-semibold border transition-colors ${openDrawer === 'card'
+                  ? 'bg-[var(--color-gold-500)]/20 text-[var(--color-gold-400)] border-[var(--color-gold-500)]/40'
+                  : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:text-[var(--color-text-primary)]'
+                }`}
               >
-                -
+                Card
               </button>
-              <span className="text-sm font-mono font-extrabold text-yellow-400 px-1 min-w-[50px] text-center">
-                {game.board.lp}
-              </span>
               <button
-                onClick={() => game.setLP(game.board.lp + 500)}
-                className="w-6 h-6 rounded bg-[var(--color-bg-tertiary)] hover:bg-emerald-950 text-emerald-400 border border-emerald-800/40 text-xs font-bold transition-colors flex items-center justify-center"
-                title="+500 LP"
+                type="button"
+                onClick={() => setOpenDrawer((d) => d === 'combo' ? null : 'combo')}
+                className={`px-2.5 py-1 rounded text-[11px] font-semibold border transition-colors ${openDrawer === 'combo'
+                  ? 'bg-[var(--color-gold-500)]/20 text-[var(--color-gold-400)] border-[var(--color-gold-500)]/40'
+                  : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:text-[var(--color-text-primary)]'
+                }`}
               >
-                +
+                Combo
               </button>
-            </div>
-          </div>
-
-          {/* Zone Stats Grid Column */}
-          <div className="grid grid-cols-4 gap-1 text-center py-1.5 bg-[var(--color-bg-primary)]/60 rounded-lg border border-[var(--color-border)]/50 text-[10px]">
-            <div>
-              <div className="text-[var(--color-text-muted)] font-medium">Deck</div>
-              <div className="font-bold text-[var(--color-text-primary)] text-xs">{game.board.deck.length}</div>
-            </div>
-            <div>
-              <div className="text-[var(--color-text-muted)] font-medium">Extra</div>
-              <div className="font-bold text-[var(--color-accent-purple)] text-xs">{game.board.extra.length}</div>
-            </div>
-            <div>
-              <div className="text-[var(--color-text-muted)] font-medium">GY</div>
-              <div className="font-bold text-[var(--color-accent-rose)] text-xs">{game.board.gy.length}</div>
-            </div>
-            <div>
-              <div className="text-[var(--color-text-muted)] font-medium">Banish</div>
-              <div className="font-bold text-[var(--color-accent-blue)] text-xs">{game.board.banish.length}</div>
-            </div>
-          </div>
-
-
+            </>
+          )}
           <button
-            onClick={game.returnAllToDecks}
-            className="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow active:scale-95 flex items-center justify-center gap-1.5"
+            type="button"
+            onClick={togglePanels}
+            className="ml-auto px-2.5 py-1 rounded text-[11px] font-semibold bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:text-[var(--color-text-primary)]"
           >
-            📥 Return All to Decks
+            {panelsCollapsed ? 'Expand panels' : 'Collapse panels'}
           </button>
         </div>
-
-        {/* Card Details Panel */}
-        <div className="flex-1 overflow-y-auto relative">
-          <CardDetailPanel card={selectedCard} onClose={selectedCard ? () => setSelectedCard(null) : undefined} />
-        </div>
-      </div>
-
-      {/* Center Column: Interactive Duel Board */}
-      <div className="flex-1 bg-[var(--color-bg-primary)] relative overflow-hidden border-r border-[var(--color-border)]">
-        <DuelBoard onSelectCard={setSelectedCard} onHoverCard={setSelectedCard} />
-      </div>
-
-      {/* Right Column: Combo Recorder & Steps List */}
-      <div className="w-80 flex-shrink-0 flex flex-col bg-[var(--color-bg-secondary)] overflow-hidden">
-        {/* Recorder Controls */}
-        <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--color-text-secondary)]">COMBO RECORDER</span>
-            {game.recording && (
-              <span className="flex items-center gap-1.5 text-[10px] text-[var(--color-accent-rose)] font-bold animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent-rose)]" />
-                REC
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {!game.recording ? (
-              <button
-                onClick={game.startRecording}
-                className="flex-1 py-1.5 rounded bg-[var(--color-accent-rose)] text-white font-semibold text-xs transition-colors hover:bg-[var(--color-accent-rose)]/80"
-              >
-                🔴 Record
-              </button>
-            ) : (
-              <button
-                onClick={game.stopRecording}
-                className="flex-1 py-1.5 rounded bg-[var(--color-text-secondary)] text-[var(--color-bg-primary)] font-semibold text-xs transition-colors hover:bg-[var(--color-text-primary)]"
-              >
-                ⏹ Stop
-              </button>
-            )}
-
-            <button
-              onClick={handleShare}
-              disabled={game.combo.length === 0}
-              className="py-1.5 px-3 rounded bg-[var(--color-gold-500)] text-[var(--color-bg-primary)] font-semibold text-xs transition-colors hover:bg-[var(--color-gold-400)] disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              🔗 Share
-            </button>
-          </div>
-
-          {/* Playback navigation */}
-          <div className="flex items-center justify-between gap-1 mt-1">
-            <button
-              onClick={() => game.jumpToStep(-1)}
-              disabled={game.playbackIndex === -1}
-              className="flex-1 py-1 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[10px] font-medium disabled:opacity-30 transition-colors"
-            >
-              ⏮ Start
-            </button>
-            <button
-              onClick={() => game.jumpToStep(game.playbackIndex - 1)}
-              disabled={game.playbackIndex <= -1}
-              className="flex-1 py-1 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[10px] font-medium disabled:opacity-30 transition-colors"
-            >
-              ◀ Prev
-            </button>
-            <button
-              onClick={() => game.jumpToStep(game.playbackIndex + 1)}
-              disabled={game.playbackIndex >= game.maxPlaybackIndex}
-              className="flex-1 py-1 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[10px] font-medium disabled:opacity-30 transition-colors"
-            >
-              Next ▶
-            </button>
-          </div>
-        </div>
-
-        {/* Steps List */}
-        <div className="flex-1 overflow-hidden">
-          <ComboStepList
-            combo={game.combo}
-            currentIndex={game.playbackIndex}
-            onJumpTo={game.jumpToStep}
-            onResetRecord={game.resetCombo}
+        <div className="flex-1 min-h-0">
+          <DuelBoard
+            onSelectCard={handleSelectCard}
+            onHoverCard={panelsCollapsed ? undefined : setSelectedCard}
           />
         </div>
       </div>
 
-      {/* Toast Notification */}
+      {!panelsCollapsed && (
+        <div className="w-80 flex-shrink-0 flex flex-col bg-[var(--color-bg-secondary)] overflow-hidden">
+          {comboPanel}
+        </div>
+      )}
+
+      {panelsCollapsed && openDrawer && (
+        <div className="fixed inset-0 z-40">
+          <button
+            type="button"
+            aria-label="Close drawer"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setOpenDrawer(null)}
+          />
+          <div className="absolute inset-x-0 bottom-0 h-[85dvh] flex flex-col bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] rounded-t-xl shadow-2xl animate-slide-up overflow-hidden">
+            <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
+              <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
+                {openDrawer === 'card' ? 'Card details' : 'Combo recorder'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpenDrawer(null)}
+                className="px-2.5 py-1 rounded text-[11px] font-semibold bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]"
+              >
+                Close
+              </button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+              {openDrawer === 'card' ? cardPanel : comboPanel}
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && (
         <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-xl animate-slide-up ${toast.type === 'error' ? 'bg-[var(--color-accent-rose)] text-white' : 'bg-[var(--color-accent-teal)] text-white'
           }`}>
           {toast.msg}
         </div>
       )}
+    </div>
+  )
+}
+
+function CardStatsPanel({
+  game,
+  selectedCard,
+  onClearCard,
+}: {
+  game: GameContextValue
+  selectedCard?: CardData | null
+  onClearCard: () => void
+}) {
+  return (
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex flex-col gap-2.5">
+        <div className="flex items-center justify-between bg-[var(--color-bg-primary)] p-2 rounded-lg border border-[var(--color-border)] shadow-inner">
+          <span className="text-xs font-bold text-[var(--color-gold-400)] uppercase tracking-wider">Life Points</span>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => game.setLP(Math.max(0, game.board.lp - 500))}
+              className="w-6 h-6 rounded bg-[var(--color-bg-tertiary)] hover:bg-red-950 text-red-400 border border-red-800/40 text-xs font-bold transition-colors flex items-center justify-center"
+              title="-500 LP"
+            >
+              -
+            </button>
+            <span className="text-sm font-mono font-extrabold text-yellow-400 px-1 min-w-[50px] text-center">
+              {game.board.lp}
+            </span>
+            <button
+              onClick={() => game.setLP(game.board.lp + 500)}
+              className="w-6 h-6 rounded bg-[var(--color-bg-tertiary)] hover:bg-emerald-950 text-emerald-400 border border-emerald-800/40 text-xs font-bold transition-colors flex items-center justify-center"
+              title="+500 LP"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-1 text-center py-1.5 bg-[var(--color-bg-primary)]/60 rounded-lg border border-[var(--color-border)]/50 text-[10px]">
+          <div>
+            <div className="text-[var(--color-text-muted)] font-medium">Deck</div>
+            <div className="font-bold text-[var(--color-text-primary)] text-xs">{game.board.deck.length}</div>
+          </div>
+          <div>
+            <div className="text-[var(--color-text-muted)] font-medium">Extra</div>
+            <div className="font-bold text-[var(--color-accent-purple)] text-xs">{game.board.extra.length}</div>
+          </div>
+          <div>
+            <div className="text-[var(--color-text-muted)] font-medium">GY</div>
+            <div className="font-bold text-[var(--color-accent-rose)] text-xs">{game.board.gy.length}</div>
+          </div>
+          <div>
+            <div className="text-[var(--color-text-muted)] font-medium">Banish</div>
+            <div className="font-bold text-[var(--color-accent-blue)] text-xs">{game.board.banish.length}</div>
+          </div>
+        </div>
+
+        <button
+          onClick={game.returnAllToDecks}
+          className="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow active:scale-95 flex items-center justify-center gap-1.5"
+        >
+          📥 Return All to Decks
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto relative">
+        <CardDetailPanel card={selectedCard} onClose={selectedCard ? onClearCard : undefined} />
+      </div>
+    </div>
+  )
+}
+
+function ComboRecorderPanel({
+  game,
+  onShare,
+}: {
+  game: GameContextValue
+  onShare: () => void
+}) {
+  return (
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-[var(--color-text-secondary)]">COMBO RECORDER</span>
+          {game.recording && (
+            <span className="flex items-center gap-1.5 text-[10px] text-[var(--color-accent-rose)] font-bold animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent-rose)]" />
+              REC
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {!game.recording ? (
+            <button
+              onClick={game.startRecording}
+              className="flex-1 py-1.5 rounded bg-[var(--color-accent-rose)] text-white font-semibold text-xs transition-colors hover:bg-[var(--color-accent-rose)]/80"
+            >
+              🔴 Record
+            </button>
+          ) : (
+            <button
+              onClick={game.stopRecording}
+              className="flex-1 py-1.5 rounded bg-[var(--color-text-secondary)] text-[var(--color-bg-primary)] font-semibold text-xs transition-colors hover:bg-[var(--color-text-primary)]"
+            >
+              ⏹ Stop
+            </button>
+          )}
+
+          <button
+            onClick={onShare}
+            disabled={game.combo.length === 0}
+            className="py-1.5 px-3 rounded bg-[var(--color-gold-500)] text-[var(--color-bg-primary)] font-semibold text-xs transition-colors hover:bg-[var(--color-gold-400)] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            🔗 Share
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between gap-1 mt-1">
+          <button
+            onClick={() => game.jumpToStep(-1)}
+            disabled={game.playbackIndex === -1}
+            className="flex-1 py-1 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[10px] font-medium disabled:opacity-30 transition-colors"
+          >
+            ⏮ Start
+          </button>
+          <button
+            onClick={() => game.jumpToStep(game.playbackIndex - 1)}
+            disabled={game.playbackIndex <= -1}
+            className="flex-1 py-1 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[10px] font-medium disabled:opacity-30 transition-colors"
+          >
+            ◀ Prev
+          </button>
+          <button
+            onClick={() => game.jumpToStep(game.playbackIndex + 1)}
+            disabled={game.playbackIndex >= game.maxPlaybackIndex}
+            className="flex-1 py-1 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] text-[10px] font-medium disabled:opacity-30 transition-colors"
+          >
+            Next ▶
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden">
+        <ComboStepList
+          combo={game.combo}
+          currentIndex={game.playbackIndex}
+          onJumpTo={game.jumpToStep}
+          onResetRecord={game.resetCombo}
+        />
+      </div>
     </div>
   )
 }
