@@ -1,15 +1,17 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from 'react'
 import type { BoardState, CardData, CardInstance, ComboStep, GameContextValue, Phase, TurnOwner } from '../types'
 import { ZONES } from '../types'
+import { getCardTypeCategory } from '../utils/cardType'
 
 const GameContext = createContext<GameContextValue | null>(null)
 
 const getOrderValue = (card: CardData | null | undefined): number => {
-  if (!card || !card.type) return 0
-  const type = card.type.toLowerCase()
-  if (type.includes('spell')) return 2
-  if (type.includes('trap')) return 3
-  return 1
+  switch (getCardTypeCategory(card)) {
+    case 'spell': return 2
+    case 'trap': return 3
+    case 'monster': return 1
+    default: return card ? 1 : 0
+  }
 }
 
 export function useGame() {

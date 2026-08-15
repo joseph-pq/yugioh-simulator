@@ -14,6 +14,7 @@ import { useGame, POSITION, MONSTER_ZONES, SPELL_ZONES } from '../context/GameCo
 import type { BoardState, CardData, CardInstance, Phase } from '../types'
 import { ZONES } from '../types'
 import { getCardImageUrl } from '../services/ygoproApi'
+import { getCardPositionCategory } from '../utils/cardType'
 import CardContextMenu from './CardContextMenu'
 import skillIcon from '../assets/skill.png'
 
@@ -48,6 +49,17 @@ interface ActiveCardData {
   cardId: number
   fromZone: string
   data?: CardData
+}
+
+function getPositionLabel(position: string | null): string | null {
+  switch (position) {
+    case POSITION.FACE_UP_ATK: return 'Face-up ATK'
+    case POSITION.FACE_UP_DEF: return 'Face-up DEF'
+    case POSITION.FACE_DOWN_DEF: return 'Face-down DEF'
+    case POSITION.FACE_UP: return 'Face-up'
+    case POSITION.FACE_DOWN: return 'Face-down'
+    default: return null
+  }
 }
 
 function getHorizontalStackStep(cards: CardInstance[], renderedCardWidth: number): number {
@@ -101,6 +113,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   const { board } = game
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [activeCard, setActiveCard] = useState<ActiveCardData | null>(null)
+  const [dragPosition, setDragPosition] = useState<string | null>(null)
   const [effectCardId, setEffectCardId] = useState<number | null>(null) // Glow ONLY when effect is activated
   const [skillActive, setSkillActive] = useState(false)
   const [flyingCard, setFlyingCard] = useState<FlyingCardState | null>(null)
@@ -264,13 +277,48 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const { active } = event
-    setActiveCard(active.data.current as ActiveCardData)
+    const card = active.data.current as ActiveCardData
+    setActiveCard(card)
+
+    const category = getCardPositionCategory(card.data)
+    setDragPosition(
+      category === 'monster'
+        ? POSITION.FACE_UP_ATK
+        : category === 'spell-trap'
+          ? POSITION.FACE_UP
+          : null,
+    )
   }, [])
+
+  useEffect(() => {
+    if (!activeCard) return
+
+    const category = getCardPositionCategory(activeCard.data)
+    if (category === 'unknown') return
+
+    const positions: string[] = category === 'monster'
+      ? [POSITION.FACE_UP_ATK, POSITION.FACE_UP_DEF, POSITION.FACE_DOWN_DEF]
+      : [POSITION.FACE_UP, POSITION.FACE_DOWN]
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space') return
+      event.preventDefault()
+      setDragPosition(current => {
+        const index = positions.indexOf(current || positions[0])
+        return positions[(index + 1) % positions.length]
+      })
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [activeCard])
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event
     game.setPlaybackVisualizing(false)
     setActiveCard(null)
+    const selectedDragPosition = dragPosition
+    setDragPosition(null)
 
     if (!over || !active.data.current) return
 
@@ -284,16 +332,18 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
     if (fromZone === toZone) return
 
-    let position: string = POSITION.FACE_UP_ATK
-    if ((SPELL_ZONES as readonly string[]).includes(toZone) || toZone === ZONES.FIELD || toZone === ZONES.EXTRA_PILE) {
-      position = POSITION.FACE_UP
-    }
+    const position = selectedDragPosition || (
+      (SPELL_ZONES as readonly string[]).includes(toZone) || toZone === ZONES.FIELD || toZone === ZONES.EXTRA_PILE
+        ? POSITION.FACE_UP
+        : POSITION.FACE_UP_ATK
+    )
 
     game.moveCard(instanceId, fromZone, toZone, position)
-  }, [game])
+  }, [dragPosition, game])
 
   const handleDragCancel = useCallback(() => {
     setActiveCard(null)
+    setDragPosition(null)
   }, [])
 
   const handleContextMenu = useCallback((e: React.MouseEvent, card: CardInstance, zone: string) => {
@@ -601,7 +651,22 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
       {/* Manual Drag Overlay */}
       <DragOverlay dropAnimation={null}>
         {activeCard?.data ? (
-          <img src={getCardImageUrl(activeCard.data.id || activeCard.cardId, 'small')} alt="" className="card-thumbnail opacity-85 shadow-2xl" />
+          <div className="relative">
+            <img
+              src={getCardImageUrl(activeCard.data.id || activeCard.cardId, 'small')}
+              alt=""
+              className={`card-thumbnail opacity-85 shadow-2xl transition-transform duration-150 ${
+                dragPosition === POSITION.FACE_UP_DEF || dragPosition === POSITION.FACE_DOWN_DEF ? 'rotate-90' : ''
+              } ${
+                dragPosition === POSITION.FACE_DOWN_DEF || dragPosition === POSITION.FACE_DOWN ? 'brightness-35' : ''
+              }`}
+            />
+            {getPositionLabel(dragPosition) && (
+              <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-2 py-1 text-[10px] font-bold text-white shadow">
+                {getPositionLabel(dragPosition)}
+              </span>
+            )}
+          </div>
         ) : null}
       </DragOverlay>
 

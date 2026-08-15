@@ -99,6 +99,7 @@ export interface ComboStep {
   top?: boolean
   cardId?: number
   card?: CardData
+  p?: string
   [key: string]: unknown
 }
 
