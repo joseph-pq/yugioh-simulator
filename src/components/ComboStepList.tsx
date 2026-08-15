@@ -41,6 +41,17 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
     }
   }, [isPlaying, currentIndex, combo.length, onJumpTo, playbackSpeed])
 
+  const handleTogglePlay = () => {
+    if (isPlaying) {
+      setIsPlaying(false)
+    } else {
+      if (currentIndex >= combo.length - 1) {
+        onJumpTo?.(-1)
+      }
+      setIsPlaying(true)
+    }
+  }
+
   if (combo.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-xs text-[var(--color-text-muted)] p-4 text-center">
@@ -122,7 +133,7 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
           </button>
 
           <button
-            onClick={() => setIsPlaying(!isPlaying)}
+            onClick={handleTogglePlay}
             className={`flex-1 py-1 rounded text-xs font-bold transition-colors ${
               isPlaying
                 ? 'bg-amber-600 text-white'
