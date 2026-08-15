@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { CardInstance, CardData, GameContextValue } from '../types'
-import { useLocation } from 'react-router'
 import { useGame, ARRAY_ZONES, createEmptyBoard, makeInstance } from '../context/GameContext'
 import { useDeck } from '../context/DeckContext'
 import { readStateFromUrl, pushStateToUrl, generateShareUrl } from '../services/urlState'
@@ -66,7 +65,6 @@ function extractInitialStateInfo(board?: BoardState): {
 export default function SimulatorPage() {
   const game = useGame()
   const deck = useDeck()
-  const location = useLocation()
   const [selectedCard, setSelectedCard] = useState<CardData | undefined | null>(undefined)
   const isMobile = useMediaQuery('(max-width: 767px)')
   const userToggledPanelsRef = useRef(false)

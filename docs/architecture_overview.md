@@ -12,7 +12,7 @@ The **Yu-Gi-Oh! Duel Links Combo Simulator** is a 100% client-side React + TypeS
 - **Styling**: TailwindCSS v4 (`@tailwindcss/vite`) + Custom Glassmorphism CSS design system (`index.css`)
 - **State & Storage**: React Context API (`CacheContext`, `DeckContext`, `GameContext`) + IndexedDB (`idb` v8) for offline card caching
 - **Drag and Drop**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
-- **Data Compression & Sharing**: `lz-string` (Compresses deck & step history into URL hash params `#d=...`)
+- **Data Compression & Sharing**: `lz-string` (Compresses deck & step history into the hash-router query `#/sim?d=...`)
 - **Card Data Source**: [YGOPRODeck API v7](https://db.ygoprodeck.com/api/v7/cardinfo.php) (Filtered for *Duel Links* format)
 
 ---
@@ -91,7 +91,7 @@ yugioh-simulator/
 
 ### 5. URL Share Engine (`src/services/urlState.ts`)
 - Compacts deck lists and recorded combo steps into lightweight JSON structures.
-- Uses `lz-string` to encode compressed state into base64 URI strings embedded in the URL hash (`#d=...`).
+- Uses `lz-string` to encode compressed state into base64 URI strings embedded in the simulator hash route (`#/sim?d=...`), which works on static hosts such as GitHub Pages.
 - When a shared URL is opened, `SimulatorPage.tsx` automatically decodes the hash, fetches any uncached card IDs, reconstructs the initial deck board state, and replays all history steps to recreate the recorded combo.
 
 ### 6. UI & Interactive Field (`src/components/`)
@@ -128,5 +128,5 @@ yugioh-simulator/
    - Decks loaded in the Deck Builder or imported via `.ydk` load onto the interactive board.
    - Users can draw opening hands, shuffle, sort, spawn Monster Tokens, adjust Life Points, and drag cards onto Monster/Spell zones.
    - Clicking "Record" logs every action into a `ComboStep` timeline.
-   - Clicking "Share" generates a compressed URL hash (`#d=...`) copied directly to the clipboard.
+- Clicking "Share" generates a compressed simulator hash-route URL (`#/sim?d=...`) copied directly to the clipboard.
    - Opening a shared URL recreates the exact deck configuration and enables step-by-step animated playback.

@@ -72,28 +72,28 @@ export function decodeState(compressed: string): ShareableState | null {
 
 export function pushStateToUrl(state: ShareableState): void {
   const compressed = encodeState(state)
-  const newUrl = `${window.location.pathname}#d=${compressed}`
+  const newUrl = `${import.meta.env.BASE_URL}#/sim?d=${compressed}`
   window.history.replaceState(null, '', newUrl)
 }
 
 export function readStateFromUrl(): ShareableState | null {
-  const hash = window.location.hash.startsWith('#/sim') ? window.location.hash.slice(5) : window.location.hash
-  if (!hash || !hash.startsWith('#d=')) return null
-  const compressed = hash.slice(3)
-  return decodeState(compressed)
+  const hash = window.location.hash
+  const query = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : ''
+  const compressed = new URLSearchParams(query).get('d')
+
+  if (compressed) return decodeState(compressed)
+
+  // Keep links created before hash-based routes usable when they still reach the app.
+  const legacyHash = hash.startsWith('#/sim') ? hash.slice(5) : hash
+  if (!legacyHash || !legacyHash.startsWith('#d=')) return null
+  const legacyCompressed = legacyHash.slice(3)
+
+  return decodeState(legacyCompressed)
 }
 
 export function generateShareUrl(state: ShareableState): string {
   const compressed = encodeState(state)
-  const origin = window.location.origin
-  let pathname = window.location.pathname
-  if (!pathname.endsWith('/sim') && !pathname.endsWith('/sim/')) {
-    pathname = pathname.replace(/\/$/, '') + '/sim'
-  }
-  if (origin.includes('localhost')) {
-    pathname = '/#' + pathname
-  }
-  return `${origin}${pathname}#d=${compressed}`
+  return `${window.location.origin}${import.meta.env.BASE_URL}#/sim?d=${compressed}`
 }
 
 export function getStateSizeInfo(state: ShareableState): { jsonBytes: number; compressedChars: number; urlLength: number } {
