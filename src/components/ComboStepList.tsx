@@ -19,6 +19,19 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
   const [isPlaying, setIsPlaying] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const activeStepRef = useRef<HTMLButtonElement | null>(null)
+  const listContainerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (currentIndex >= 0 && activeStepRef.current) {
+      activeStepRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    } else if (currentIndex < 0 && listContainerRef.current) {
+      listContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [currentIndex])
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | null = null
@@ -161,10 +174,11 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
       </div>
 
       {/* Steps List */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={listContainerRef} className="flex-1 overflow-y-auto">
         {combo.map((step, i) => (
           <button
             key={i}
+            ref={i === currentIndex ? activeStepRef : null}
             onClick={() => { setIsPlaying(false); onJumpTo?.(i) }}
             className={`w-full px-3 py-2 text-left flex items-center gap-2.5 text-xs border-b border-[var(--color-border)]/50 transition-all ${
               i === currentIndex
