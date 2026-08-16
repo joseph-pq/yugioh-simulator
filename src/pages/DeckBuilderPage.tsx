@@ -159,6 +159,12 @@ export default function DeckBuilderPage() {
     URL.revokeObjectURL(url)
   }, [deck])
 
+  const handleSort = useCallback(async () => {
+    if (deck.mainDeck.length === 0 && deck.extraDeck.length === 0) return
+    await deck.sortDeck()
+    showToast('Sorted deck cards', 'success')
+  }, [deck, showToast])
+
   const countInDeck = (cardId: number) => deck.getCardCount(cardId)
 
   return (
@@ -327,6 +333,14 @@ export default function DeckBuilderPage() {
               💾 Export
             </button>
             <button
+              onClick={handleSort}
+              disabled={deck.mainDeck.length === 0 && deck.extraDeck.length === 0}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+              title="Sort cards in Main and Extra Deck by Category, Level, and Name"
+            >
+              📶 Sort
+            </button>
+            <button
               onClick={deck.clearDeck}
               disabled={deck.mainDeck.length === 0 && deck.extraDeck.length === 0}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[var(--color-accent-rose)] hover:bg-[var(--color-accent-rose)]/10 border border-[var(--color-border)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -381,9 +395,19 @@ export default function DeckBuilderPage() {
               {/* Main Deck Section */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">
-                    Main Deck <span className="text-[var(--color-gold-400)] font-mono">({deck.mainDeck.length}/30)</span>
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">
+                      Main Deck <span className="text-[var(--color-gold-400)] font-mono">({deck.mainDeck.length}/30)</span>
+                    </h3>
+                    <button
+                      onClick={handleSort}
+                      disabled={deck.mainDeck.length === 0 && deck.extraDeck.length === 0}
+                      className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                      title="Sort deck cards"
+                    >
+                      📶 Sort Deck
+                    </button>
+                  </div>
                   <span className="text-[10px] text-[var(--color-text-muted)]">
                     Hover card to remove or right-click
                   </span>

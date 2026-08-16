@@ -173,6 +173,7 @@ export interface DeckContextValue {
   importDeck: (parsed: { main?: number[]; extra?: number[] }) => void
   clearDeck: () => void
   getCardCount: (cardId: number) => number
+  sortDeck: () => Promise<void>
 }
 
 export interface CacheContextValue {

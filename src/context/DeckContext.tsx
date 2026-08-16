@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { fetchAndCacheCards } from '../services/cardCache'
 import { validateDuelLinksDeck } from '../utils/ydkParser'
 import type { CardData, DeckContextValue, DeckValidationResult } from '../types'
 
@@ -90,6 +91,56 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     return [...mainDeck, ...extraDeck].filter(id => id === cardId).length
   }, [mainDeck, extraDeck])
 
+  const sortDeck = useCallback(async () => {
+    const allIds = [...mainDeck, ...extraDeck]
+    if (allIds.length === 0) return
+
+    const cardList = await fetchAndCacheCards(allIds)
+    const cardMap = new Map<number, CardData>()
+    cardList.forEach(c => cardMap.set(c.id, c))
+
+    const getSortCategory = (card: CardData | undefined): number => {
+      if (!card) return 99
+      const type = (card.type || '').toLowerCase()
+      const humanType = (card.humanType || '').toLowerCase()
+      const isType = (str: string) => type.includes(str) || humanType.includes(str)
+
+      if (isType('fusion monster')) return 10
+      if (isType('synchro monster')) return 11
+      if (isType('xyz monster')) return 12
+      if (isType('link monster')) return 13
+      if (isType('monster')) return 1
+      if (isType('spell')) return 2
+      if (isType('trap')) return 3
+      return 4
+    }
+
+    const compareCards = (idA: number, idB: number) => {
+      const cardA = cardMap.get(idA)
+      const cardB = cardMap.get(idB)
+      if (!cardA && !cardB) return 0
+      if (!cardA) return 1
+      if (!cardB) return -1
+
+      const catA = getSortCategory(cardA)
+      const catB = getSortCategory(cardB)
+      if (catA !== catB) return catA - catB
+
+      const levelA = cardA.level ?? cardA.rank ?? 0
+      const levelB = cardB.level ?? cardB.rank ?? 0
+      if (levelA !== levelB) return levelB - levelA
+
+      return cardA.name.localeCompare(cardB.name)
+    }
+
+    const sortedMain = [...mainDeck].sort(compareCards)
+    const sortedExtra = [...extraDeck].sort(compareCards)
+
+    setMainDeck(sortedMain)
+    setExtraDeck(sortedExtra)
+    revalidate(sortedMain, sortedExtra)
+  }, [mainDeck, extraDeck, revalidate])
+
   const value: DeckContextValue = {
     deckName,
     setDeckName,
@@ -102,6 +153,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     importDeck,
     clearDeck,
     getCardCount,
+    sortDeck,
   }
 
   return (
