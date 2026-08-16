@@ -31,7 +31,7 @@ export default function CardDetailPanel({ card }: CardDetailPanelProps) {
       <div className="flex items-start justify-between gap-3 mb-3 border-b border-[var(--color-border)] pb-3">
         {/* Left: Card Metadata & Content */}
         <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-          <h2 className="text-base font-bold text-[var(--color-text-primary)] leading-snug truncate" title={card.name}>
+          <h2 className="text-base font-bold text-[var(--color-text-primary)] leading-snug break-words" title={card.name}>
             {card.name}
           </h2>
 
