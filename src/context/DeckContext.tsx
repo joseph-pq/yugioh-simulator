@@ -65,10 +65,10 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     if (currentCount >= 3) return false
 
     if (isExtra) {
-      if (extraDeck.length >= 9) return false
+      if (extraDeck.length >= 15) return false
       addToExtraDeck(card.id)
     } else {
-      if (mainDeck.length >= 30) return false
+      if (mainDeck.length >= 60) return false
       addToMainDeck(card.id)
     }
     return true

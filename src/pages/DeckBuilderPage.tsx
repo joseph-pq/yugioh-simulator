@@ -97,7 +97,7 @@ export default function DeckBuilderPage() {
       if (currentCount >= 3) {
         showToast(`Cannot add ${card.name} — maximum 3 copies reached`, 'error')
       } else {
-        showToast('Cannot add — deck capacity full (30 Main / 9 Extra)', 'error')
+        showToast('Cannot add — deck capacity full (60 Main / 15 Extra)', 'error')
       }
     } else {
       showToast(`Added ${card.name} to deck`, 'success')
@@ -301,7 +301,13 @@ export default function DeckBuilderPage() {
               placeholder="My Deck Name"
               className="bg-transparent text-lg font-semibold text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none border-b border-transparent focus:border-[var(--color-gold-500)] transition-colors"
             />
-            <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${deck.validation.valid ? 'bg-[var(--color-accent-teal)]/15 text-[var(--color-accent-teal)]' : 'bg-[var(--color-accent-rose)]/15 text-[var(--color-accent-rose)]'}`}>
+            <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
+              deck.validation.valid && deck.validation.warnings.length === 0
+                ? 'bg-[var(--color-accent-teal)]/15 text-[var(--color-accent-teal)]'
+                : deck.validation.errors.length > 0
+                ? 'bg-[var(--color-accent-rose)]/15 text-[var(--color-accent-rose)]'
+                : 'bg-amber-500/15 text-amber-400'
+            }`}>
               {deck.mainDeck.length}/20-30 Main • {deck.extraDeck.length}/9 Extra
             </span>
           </div>
@@ -361,14 +367,27 @@ export default function DeckBuilderPage() {
           </div>
         </div>
 
-        {/* Validation Error Warnings */}
-        {deck.validation.errors.length > 0 && (
-          <div className="mx-4 mt-3 p-2.5 rounded-lg bg-[var(--color-accent-rose)]/10 border border-[var(--color-accent-rose)]/30 flex flex-col gap-1">
-            {deck.validation.errors.map((e, i) => (
-              <p key={i} className="text-xs text-[var(--color-accent-rose)] font-medium flex items-center gap-1.5">
-                <span>⚠️</span> {e}
-              </p>
-            ))}
+        {/* Validation Errors & Warnings */}
+        {(deck.validation.errors.length > 0 || deck.validation.warnings.length > 0) && (
+          <div className="mx-4 mt-3 flex flex-col gap-2">
+            {deck.validation.errors.length > 0 && (
+              <div className="p-2.5 rounded-lg bg-[var(--color-accent-rose)]/10 border border-[var(--color-accent-rose)]/30 flex flex-col gap-1">
+                {deck.validation.errors.map((e, i) => (
+                  <p key={i} className="text-xs text-[var(--color-accent-rose)] font-medium flex items-center gap-1.5">
+                    <span>⛔</span> {e}
+                  </p>
+                ))}
+              </div>
+            )}
+            {deck.validation.warnings.length > 0 && (
+              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex flex-col gap-1">
+                {deck.validation.warnings.map((w, i) => (
+                  <p key={i} className="text-xs text-amber-400 font-medium flex items-center gap-1.5">
+                    <span>⚠️</span> {w}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

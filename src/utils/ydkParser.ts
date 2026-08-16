@@ -57,12 +57,16 @@ export function validateDuelLinksDeck(deck: DeckState): DeckValidationResult {
   if (deck.main.length < 20) {
     errors.push(`Main deck has ${deck.main.length} cards (minimum 20)`)
   }
-  if (deck.main.length > 30) {
-    errors.push(`Main deck has ${deck.main.length} cards (maximum 30)`)
+  if (deck.main.length > 60) {
+    errors.push(`Main deck has ${deck.main.length} cards (maximum 60)`)
+  } else if (deck.main.length > 30) {
+    warnings.push(`Main deck has ${deck.main.length} cards (maximum 30)`)
   }
 
-  if ((deck.extra?.length || 0) > 9) {
-    errors.push(`Extra deck has ${deck.extra.length} cards (maximum 9)`)
+  if ((deck.extra?.length || 0) > 15) {
+    errors.push(`Extra deck has ${deck.extra.length} cards (maximum 15)`)
+  } else if ((deck.extra?.length || 0) > 9) {
+    warnings.push(`Extra deck has ${deck.extra.length} cards (maximum 9)`)
   }
 
   const counts: Record<number, number> = {}
@@ -71,10 +75,6 @@ export function validateDuelLinksDeck(deck: DeckState): DeckValidationResult {
     if (counts[id] > 3) {
       errors.push(`Card ${id} appears ${counts[id]} times (maximum 3)`)
     }
-  }
-
-  if (deck.main.length > 20) {
-    warnings.push(`Running ${deck.main.length} cards (20 is optimal for consistency)`)
   }
 
   if ((deck.extra?.length || 0) === 0) {
