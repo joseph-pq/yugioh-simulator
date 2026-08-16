@@ -64,13 +64,14 @@ function getPositionLabel(position: string | null): string | null {
   }
 }
 
-function getHorizontalStackStep(cards: CardInstance[], renderedCardWidth: number): number {
+function getHorizontalStackStep(cards: CardInstance[], renderedCardWidth: number, containerWidth?: number): number {
   let layoutStep = HORIZONTAL_LAYOUT_CARD_WIDTH + HORIZONTAL_GAP
+  const availWidth = containerWidth && containerWidth > 0 ? containerWidth : HORIZONTAL_AVAILABLE_WIDTH
 
-  if (cards.length > 1 && HORIZONTAL_LAYOUT_CARD_WIDTH * cards.length > HORIZONTAL_AVAILABLE_WIDTH) {
+  if (cards.length > 1 && HORIZONTAL_LAYOUT_CARD_WIDTH * cards.length > availWidth) {
     layoutStep = Math.max(
-      8,
-      Math.floor((HORIZONTAL_AVAILABLE_WIDTH - HORIZONTAL_LAYOUT_CARD_WIDTH) / (cards.length - 1))
+      6,
+      Math.floor((availWidth - HORIZONTAL_LAYOUT_CARD_WIDTH) / (cards.length - 1))
     )
   }
 
@@ -88,7 +89,7 @@ function getCardSlotPosition(zone: string, cards: CardInstance[], cardId: number
   const anchorElement = anchor ? document.getElementById(`card-${anchor.id}`) : null
   const renderedCardWidth = anchorElement?.getBoundingClientRect().width || 60
   const zoneRect = zoneElement.getBoundingClientRect()
-  const step = getHorizontalStackStep(cards, renderedCardWidth)
+  const step = getHorizontalStackStep(cards, renderedCardWidth, zoneRect.width)
 
   return {
     x: zoneRect.left + cardIndex * step,
@@ -780,21 +781,39 @@ function HorizontalStackPileZone({
   activeCard,
 }: HorizontalStackPileZoneProps) {
   const { setNodeRef, isOver } = useDroppable({ id: zone })
-
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [containerWidth, setContainerWidth] = useState<number>(0)
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null)
 
+  const setCombinedRef = useCallback((node: HTMLDivElement | null) => {
+    setNodeRef(node)
+    containerRef.current = node
+  }, [setNodeRef])
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const updateWidth = () => {
+      if (el.clientWidth > 0) setContainerWidth(el.clientWidth)
+    }
+    updateWidth()
+    const ro = new ResizeObserver(updateWidth)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   const cardWidth = HORIZONTAL_LAYOUT_CARD_WIDTH
-  const availableWidth = HORIZONTAL_AVAILABLE_WIDTH
+  const availableWidth = containerWidth > 0 ? containerWidth : HORIZONTAL_AVAILABLE_WIDTH
   const gap = HORIZONTAL_GAP
 
   let stepOffset = cardWidth + gap
 
-  if (cards.length > 1) {
+  if (cards.length > 1 && availableWidth > 0) {
     const requiredWidth = cardWidth * cards.length
 
     if (requiredWidth > availableWidth) {
       stepOffset = Math.max(
-        8,
+        6,
         Math.floor((availableWidth - cardWidth) / (cards.length - 1))
       )
     }
@@ -805,9 +824,9 @@ function HorizontalStackPileZone({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={setCombinedRef}
       id={`zone-${zone}`}
-      className={`relative flex items-start min-h-[78px] overflow-visible transition-colors duration-200 ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''
+      className={`relative flex items-start min-h-[84px] w-full pt-2.5 overflow-visible transition-colors duration-200 ${isOver ? 'bg-[var(--color-gold-500)]/5' : ''
         }`}
     >
       {visibleCards.length === 0 ? (
