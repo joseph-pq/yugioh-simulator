@@ -10,7 +10,6 @@ import CardDetailPanel from '../components/CardDetailPanel'
 import ComboStepList from '../components/ComboStepList'
 import type { BoardState } from '../types'
 import type { TokenInitInfo } from '../services/urlState'
-import { useMediaQuery } from '../hooks/useMediaQuery'
 
 function isTokenCard(c: CardInstance): boolean {
   return c.cardId === 99999999 || c.data?.type === 'Token'
@@ -66,10 +65,6 @@ export default function SimulatorPage() {
   const game = useGame()
   const deck = useDeck()
   const [selectedCard, setSelectedCard] = useState<CardData | undefined | null>(undefined)
-  const isMobile = useMediaQuery('(max-width: 767px)')
-  const userToggledPanelsRef = useRef(false)
-  const [panelsCollapsed, setPanelsCollapsed] = useState(isMobile)
-  const [openDrawer, setOpenDrawer] = useState<'card' | 'combo' | null>(null)
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
   const [toast, setToast] = useState<{ msg: string, type: string } | null>(null)
@@ -85,22 +80,9 @@ export default function SimulatorPage() {
     setTimeout(() => setToast(null), 3000)
   }, [])
 
-  useEffect(() => {
-    if (!userToggledPanelsRef.current) {
-      setPanelsCollapsed(isMobile)
-    }
-  }, [isMobile])
-
-  const togglePanels = useCallback(() => {
-    userToggledPanelsRef.current = true
-    setOpenDrawer(null)
-    setPanelsCollapsed((prev) => !prev)
-  }, [])
-
   const handleSelectCard = useCallback((card?: CardData) => {
     setSelectedCard(card)
-    if (panelsCollapsed && card) setOpenDrawer('card')
-  }, [panelsCollapsed])
+  }, [])
 
   // Parse state from URL hash on load
   useEffect(() => {
@@ -530,96 +512,23 @@ export default function SimulatorPage() {
   )
 
   return (
-    <div className={`flex h-[calc(100dvh-56px)] ${panelsCollapsed ? 'overflow-hidden' : 'overflow-x-auto overflow-y-hidden'}`}>
-      {!panelsCollapsed && (
-        <div className="w-80 flex-shrink-0 flex flex-col bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] overflow-hidden">
-          {cardPanel}
-        </div>
-      )}
+    <div className="flex flex-col md:flex-row min-h-[calc(100dvh-56px)] md:h-[calc(100dvh-56px)] overflow-y-auto md:overflow-hidden">
+      <div className="w-full h-[340px] md:w-80 md:h-full flex-shrink-0 flex flex-col bg-[var(--color-bg-secondary)] border-b md:border-b-0 md:border-r border-[var(--color-border)] overflow-hidden">
+        {cardPanel}
+      </div>
 
-      <div className={`flex-1 min-w-0 bg-[var(--color-bg-primary)] relative overflow-hidden flex flex-col ${!panelsCollapsed ? 'min-w-[640px] border-r border-[var(--color-border)]' : ''}`}>
-        <div className="flex-shrink-0 flex items-center gap-1.5 px-2 py-1.5 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/80">
-          {panelsCollapsed && (
-            <>
-              <span className="text-[10px] font-bold text-[var(--color-gold-400)] uppercase tracking-wider">LP</span>
-              <span className="text-sm font-mono font-extrabold text-yellow-400 min-w-[42px]">{game.board.lp}</span>
-              {game.recording && (
-                <span className="flex items-center gap-1 text-[10px] text-[var(--color-accent-rose)] font-bold animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent-rose)]" />
-                  REC
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setOpenDrawer((d) => d === 'card' ? null : 'card')}
-                className={`px-2.5 py-1 rounded text-[11px] font-semibold border transition-colors ${openDrawer === 'card'
-                  ? 'bg-[var(--color-gold-500)]/20 text-[var(--color-gold-400)] border-[var(--color-gold-500)]/40'
-                  : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:text-[var(--color-text-primary)]'
-                }`}
-              >
-                Card
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpenDrawer((d) => d === 'combo' ? null : 'combo')}
-                className={`px-2.5 py-1 rounded text-[11px] font-semibold border transition-colors ${openDrawer === 'combo'
-                  ? 'bg-[var(--color-gold-500)]/20 text-[var(--color-gold-400)] border-[var(--color-gold-500)]/40'
-                  : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:text-[var(--color-text-primary)]'
-                }`}
-              >
-                Combo
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={togglePanels}
-            className="ml-auto px-2.5 py-1 rounded text-[11px] font-semibold bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:text-[var(--color-text-primary)]"
-          >
-            {panelsCollapsed ? 'Expand panels' : 'Collapse panels'}
-          </button>
-        </div>
-        <div className="flex-1 min-h-0">
+      <div className="w-full flex-shrink-0 md:flex-1 md:min-w-[640px] md:h-full bg-[var(--color-bg-primary)] border-b md:border-b-0 md:border-r border-[var(--color-border)] flex flex-col min-w-0">
+        <div className="w-full md:flex-1 md:min-h-0">
           <DuelBoard
             onSelectCard={handleSelectCard}
-            onHoverCard={panelsCollapsed ? undefined : setSelectedCard}
+            onHoverCard={setSelectedCard}
           />
         </div>
       </div>
 
-      {!panelsCollapsed && (
-        <div className="w-80 flex-shrink-0 flex flex-col bg-[var(--color-bg-secondary)] overflow-hidden">
-          {comboPanel}
-        </div>
-      )}
-
-      {panelsCollapsed && openDrawer && (
-        <div className="fixed inset-0 z-40">
-          <button
-            type="button"
-            aria-label="Close drawer"
-            className="absolute inset-0 bg-black/60"
-            onClick={() => setOpenDrawer(null)}
-          />
-          <div className="absolute inset-x-0 bottom-0 h-[85dvh] flex flex-col bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] rounded-t-xl shadow-2xl animate-slide-up overflow-hidden">
-            <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
-              <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
-                {openDrawer === 'card' ? 'Card details' : 'Combo recorder'}
-              </span>
-              <button
-                type="button"
-                onClick={() => setOpenDrawer(null)}
-                className="px-2.5 py-1 rounded text-[11px] font-semibold bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]"
-              >
-                Close
-              </button>
-            </div>
-            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-              {openDrawer === 'card' ? cardPanel : comboPanel}
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="w-full h-[340px] md:w-80 md:h-full flex-shrink-0 flex flex-col bg-[var(--color-bg-secondary)] overflow-hidden">
+        {comboPanel}
+      </div>
 
       {toast && (
         <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-xl animate-slide-up ${toast.type === 'error' ? 'bg-[var(--color-accent-rose)] text-white' : 'bg-[var(--color-accent-teal)] text-white'

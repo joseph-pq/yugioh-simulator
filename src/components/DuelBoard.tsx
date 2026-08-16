@@ -4,7 +4,8 @@ import {
   DragOverlay,
   useDraggable,
   useDroppable,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragStartEvent,
@@ -19,6 +20,7 @@ import CardContextMenu from './CardContextMenu'
 import skillIcon from '../assets/skill.png'
 
 const FIELD_NATURAL_WIDTH = 720
+const FIELD_NATURAL_HEIGHT = 480
 const HORIZONTAL_STACK_ZONES = new Set<string>([ZONES.HAND, ZONES.DECK, ZONES.EXTRA])
 const HORIZONTAL_LAYOUT_CARD_WIDTH = 56
 const HORIZONTAL_AVAILABLE_WIDTH = 1100
@@ -119,15 +121,19 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   const [flyingCard, setFlyingCard] = useState<FlyingCardState | null>(null)
   const fieldWrapRef = useRef<HTMLDivElement>(null)
   const fieldInnerRef = useRef<HTMLDivElement>(null)
-  const [fieldScale, setFieldScale] = useState(1)
-  const [scaledFieldHeight, setScaledFieldHeight] = useState<number | undefined>()
+  const [fieldScale, setFieldScale] = useState(() => {
+    if (typeof window === 'undefined') return 1
+    return Math.min(1, Math.max(300, window.innerWidth - 16) / FIELD_NATURAL_WIDTH)
+  })
+  const scaledFieldHeight = Math.round(FIELD_NATURAL_HEIGHT * fieldScale)
   const playbackGlowTimers = useRef<{
     effect: ReturnType<typeof setTimeout> | null
     skill: ReturnType<typeof setTimeout> | null
   }>({ effect: null, skill: null })
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
   )
   // Derive hiddenPlaybackCardId synchronously during render
   // This avoids a mismatch between the visual state and the actual board
@@ -449,13 +455,11 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
   useEffect(() => {
     const wrap = fieldWrapRef.current
-    const inner = fieldInnerRef.current
-    if (!wrap || !inner) return
+    if (!wrap) return
 
     const updateScale = () => {
       const scale = Math.min(1, wrap.clientWidth / FIELD_NATURAL_WIDTH)
       setFieldScale(scale)
-      setScaledFieldHeight(inner.offsetHeight * scale)
     }
 
     updateScale()
@@ -466,20 +470,21 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
-      <div className="flex flex-col h-full select-none justify-between overflow-hidden">
+      <div className="flex flex-col md:h-full select-none justify-between overflow-hidden">
         {/* Phase Tracker Bar */}
         <PhaseTrackerBar phase={board.phase || 'dp'} turn={board.turn || 'player'} />
         {/* Main Duel Field Area */}
-        <div ref={fieldWrapRef} className="flex-1 flex items-start justify-center p-2 min-h-0 overflow-hidden">
+        <div ref={fieldWrapRef} className="w-full flex-shrink-0 md:flex-1 flex items-start justify-center p-2 md:min-h-0 overflow-hidden">
           <div
             className="w-full flex justify-center overflow-hidden"
-            style={{ height: scaledFieldHeight }}
+            style={{ height: `${scaledFieldHeight}px` }}
           >
           <div
             ref={fieldInnerRef}
             className="flex items-center justify-center gap-3"
             style={{
               width: FIELD_NATURAL_WIDTH,
+              height: FIELD_NATURAL_HEIGHT,
               transform: `scale(${fieldScale})`,
               transformOrigin: 'top center',
             }}
@@ -651,7 +656,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
       {/* Manual Drag Overlay */}
       <DragOverlay dropAnimation={null}>
         {activeCard?.data ? (
-          <div className="relative">
+          <div className="relative pointer-events-none touch-none">
             <img
               src={getCardImageUrl(activeCard.data.id || activeCard.cardId, 'small')}
               alt=""
@@ -966,7 +971,7 @@ function TokenGeneratorBox({ onSelectCard, onHoverCard }: { onSelectCard?: (card
         ref={setNodeRef}
         {...attributes}
         {...listeners}
-        className={`relative cursor-grab active:cursor-grabbing transition-all duration-200 group rounded transform-gpu ${
+        className={`relative cursor-grab active:cursor-grabbing transition-all duration-200 group rounded transform-gpu touch-none ${
           isDragging ? 'opacity-40 scale-95' : 'hover:-translate-y-1 hover:shadow-[0_0_12px_rgba(245,158,11,0.5)]'
         }`}
         onClick={() => onSelectCard?.(TOKEN_DATA)}
@@ -1009,7 +1014,7 @@ function PhaseTrackerBar({ phase, turn }: { phase: Phase; turn: 'player' | 'oppo
     : 'bg-rose-950/40 text-rose-300/50 border border-rose-800/30'
 
   return (
-    <div className="flex items-center gap-0 px-3 py-1.5 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/60 select-none">
+    <div className="flex items-center gap-0 px-3 py-1.5 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/60 select-none overflow-x-auto">
       {/* Turn badge */}
       <div
         className={`text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-md mr-3 whitespace-nowrap transition-all duration-300 ${
@@ -1144,7 +1149,7 @@ function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, o
       id={`card-${card.id}`}
       {...attributes}
       {...listeners}
-      className={`relative cursor-grab active:cursor-grabbing transition-all duration-200 ease-out flex-shrink-0 rounded transform-gpu
+      className={`relative cursor-grab active:cursor-grabbing transition-all duration-200 ease-out flex-shrink-0 rounded transform-gpu touch-none
         ${isDragging ? dragClass : `${hoverClass} hover:z-50`}
         ${isGhost ? 'opacity-20' : ''}
         ${isDefense ? 'rotate-90' : ''}
