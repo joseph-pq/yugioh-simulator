@@ -394,12 +394,26 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
       }
       return prev
-    }, 'token', { to: targetZone, i: createdId })
+    }, 'token', { to: targetZone, i: createdId, cardId: 99999999 })
   }, [updateBoardState])
 
-  const activateEffect = useCallback((instanceId: number, zone: string) => {
-    updateBoardState(prev => prev, 'effect', { i: instanceId, z: zone })
-  }, [updateBoardState])
+  const activateEffect = useCallback((instanceId: number, zone: string, cardId?: number) => {
+    let resolvedCardId = cardId
+    if (!resolvedCardId) {
+      const zones = ['hand', 'egy', 'gy', 'ebanish', 'banish', 'eextra', 'extra', 'deck', 'efree', 'free']
+      const sourceCard = (() => {
+        if (zones.includes(zone)) {
+          const zoneVal = board[zone as keyof BoardState]
+          return Array.isArray(zoneVal) ? zoneVal.find((c: CardInstance) => c.id === instanceId) || null : null
+        }
+        const zoneCard = board[zone as keyof BoardState]
+        return zoneCard && typeof zoneCard === 'object' && 'id' in zoneCard && (zoneCard as any).id === instanceId ? zoneCard : null
+      })() as CardInstance | null
+      resolvedCardId = sourceCard?.cardId
+    }
+
+    updateBoardState(prev => prev, 'effect', { i: instanceId, z: zone, cardId: resolvedCardId })
+  }, [board, updateBoardState])
 
   const activateSkill = useCallback(() => {
     updateBoardState(prev => prev, 'skill', {})
@@ -452,7 +466,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
       }
       return prev
-    }, 'removetoken', { i: instanceId, z: zone })
+    }, 'removetoken', { i: instanceId, z: zone, cardId: 99999999 })
   }, [updateBoardState])
 
   const resetBoard = useCallback(() => {

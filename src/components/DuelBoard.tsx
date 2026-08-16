@@ -363,7 +363,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
     const id = card.id
     switch (action) {
       case 'activate_effect':
-        game.activateEffect(id, zone)
+        game.activateEffect(id, zone, card.cardId)
         setEffectCardId(id)
         setTimeout(() => setEffectCardId(null), 1200)
         break

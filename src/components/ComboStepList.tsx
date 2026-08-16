@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import type { ComboStep } from '../types'
-import { useGame } from '../context/GameContext'
+import { useGame, POSITION } from '../context/GameContext'
+import skillIcon from '../assets/skill.png'
+import { getCardImageUrl } from '../services/ygoproApi'
 
 export interface ComboStepListProps {
   combo: ComboStep[]
@@ -191,7 +193,7 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
             <span className="w-5 text-right font-mono text-[10px] opacity-75 flex-shrink-0">
               {i + 1}.
             </span>
-            <span className="flex-shrink-0 text-sm">{getActionIcon(step.a)}</span>
+            {renderStepIcon(step)}
             <span className="truncate">{formatStep(step)}</span>
           </button>
         ))}
@@ -250,21 +252,113 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
   )
 }
 
-function getActionIcon(action?: string) {
-  if (!action) return '▶️'
-  const map: Record<string, string> = {
-    draw: '🃏', shuffle: '🔀', move: '↗️', pos: '🔄',
-    lp: '❤️', mill: '💀', todeck: '🔝', token: '✨', removetoken: '🗑️', effect: '⚡', skill: '🎲'
+function CardArtworkCrop({
+  cardId,
+  isDef,
+  isEffect,
+  isRemove,
+}: {
+  cardId: number
+  isDef?: boolean
+  isEffect?: boolean
+  isRemove?: boolean
+}) {
+  return (
+    <div className="relative flex-shrink-0 w-7 h-7 overflow-hidden rounded-md border border-amber-500/50 shadow-md flex items-center justify-center bg-black/40">
+      <img
+        src={getCardImageUrl(cardId, 'small')}
+        alt=""
+        style={{
+          width: '127.62%',
+          maxWidth: 'none',
+          height: '187.98%',
+          position: 'absolute',
+          left: '-13.33%',
+          top: '-32.69%',
+          transform: isDef ? 'rotate(90deg)' : 'none',
+        }}
+      />
+      {isEffect && (
+        <span className="absolute -top-1 -right-1 text-[8px] bg-amber-400 text-black font-black rounded-full w-3.5 h-3.5 flex items-center justify-center shadow-md border border-amber-300 z-10">
+          ⚡
+        </span>
+      )}
+      {isRemove && (
+        <span className="absolute -top-1 -right-1 text-[8px] bg-rose-600 text-white font-black rounded-full w-3.5 h-3.5 flex items-center justify-center shadow-md border border-rose-400 z-10">
+          ✕
+        </span>
+      )}
+    </div>
+  )
+}
+
+function renderStepIcon(step: ComboStep) {
+  const cardId = step.cardId || (step.card ? step.card.id : undefined)
+
+  if (step.a === 'skill') {
+    return <img src={skillIcon} alt="Skill" className="w-7 h-7 object-contain flex-shrink-0 drop-shadow" />
   }
-  return map[action] || '▶️'
+
+  if (step.a === 'move' || step.a === 'effect' || step.a === 'pos') {
+    if (cardId) {
+      const isDef = step.p === POSITION.FACE_UP_DEF || step.p === POSITION.FACE_DOWN_DEF
+      return <CardArtworkCrop cardId={cardId} isDef={isDef} isEffect={step.a === 'effect'} />
+    }
+    // Fallback if cardId was not saved in older step payload
+    const fallbackEmoji = step.a === 'effect' ? '⚡' : step.a === 'move' ? '↗️' : '🔄'
+    return <span className="flex-shrink-0 text-base">{fallbackEmoji}</span>
+  }
+
+  if (step.a === 'token' || step.a === 'removetoken') {
+    return <CardArtworkCrop cardId={99999999} isRemove={step.a === 'removetoken'} />
+  }
+
+  if (step.a === 'phase') {
+    const isOpponent = step.turn === 'opponent'
+    const phaseName = String(step.phase || 'DP').toUpperCase()
+    return (
+      <span
+        className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider flex-shrink-0 ${
+          isOpponent
+            ? 'bg-rose-600/30 text-rose-300 border border-rose-500/40 shadow-sm'
+            : 'bg-blue-600/30 text-blue-300 border border-blue-500/40 shadow-sm'
+        }`}
+      >
+        {isOpponent ? '🛡' : '⚔'} {phaseName}
+      </span>
+    )
+  }
+
+  const map: Record<string, string> = {
+    draw: '🃏',
+    shuffle: '🔀',
+    sort: '📶',
+    lp: '❤️',
+    mill: '💀',
+    todeck: '🔝',
+    reset_board: '📥',
+  }
+  return <span className="flex-shrink-0 text-base">{map[step.a || ''] || '▶️'}</span>
+}
+
+function getPositionLabel(p?: string) {
+  switch (p) {
+    case POSITION.FACE_UP_ATK: return 'Face-up ATK'
+    case POSITION.FACE_UP_DEF: return 'Face-up DEF'
+    case POSITION.FACE_DOWN_DEF: return 'Face-down DEF'
+    case POSITION.FACE_UP: return 'Face-up'
+    case POSITION.FACE_DOWN: return 'Face-down'
+    default: return null
+  }
 }
 
 function formatStep(step: ComboStep) {
   switch (step.a) {
     case 'draw': return `Draw ${step.n || 1} card${(step.n || 1) > 1 ? 's' : ''}`
-    case 'shuffle': return 'Shuffle deck'
-    case 'move': return `Move card → ${String(step.to || step.t || '').toUpperCase()}`
-    case 'pos': return `Change position (${String(step.z || step.to || '').toUpperCase()})`
+    case 'shuffle': return 'Shuffle Main Deck'
+    case 'sort': return 'Sort Main Deck'
+    case 'move': return `Move → ${String(step.to || step.t || '').toUpperCase()}`
+    case 'pos': return `Position → ${getPositionLabel(step.p) || String(step.p || step.z || step.to || '').toUpperCase()}`
     case 'lp': return `LP set to ${step.v}`
     case 'mill': return `Mill ${step.n || 1} card${(step.n || 1) > 1 ? 's' : ''}`
     case 'todeck': return `Return to deck (${step.top ? 'top' : 'bottom'})`
@@ -272,6 +366,8 @@ function formatStep(step: ComboStep) {
     case 'removetoken': return `Remove Token (${String(step.z || step.to || '').toUpperCase()})`
     case 'effect': return `Activate Effect (${String(step.z || step.to || '').toUpperCase()})`
     case 'skill': return 'Activate Skill'
+    case 'phase': return `Phase → ${String(step.phase || '').toUpperCase()} (${step.turn === 'opponent' ? 'Opponent' : 'Your'} Turn)`
+    case 'reset_board': return 'Return All Cards to Decks'
     default: return step.a || 'Action'
   }
 }
