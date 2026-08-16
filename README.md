@@ -34,3 +34,11 @@ Open http://localhost:5173.
 ## License
 
 [MIT](LICENSE)
+
+## Disclaimer
+
+This is an **unofficial fan project** with no affiliation to, endorsement by, or association with Konami Digital Entertainment, Yu-Gi-Oh!, or Duel Links.
+
+- Yu-Gi-Oh! and all related names, card artwork, and trademarks are the property of **Konami Digital Entertainment Co., Ltd.** and/or **Kazuki Takahashi**.
+- Card data and images are provided by the community-run [YGOProDeck API](https://ygoprodeck.com/api-guide/) and are used solely for non-commercial, educational fan purposes.
+- This project does not distribute, sell, or profit from any Konami-owned assets.
