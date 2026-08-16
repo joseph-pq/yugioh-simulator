@@ -1,16 +1,36 @@
-# React + Vite
+# Yu-Gi-Oh! Duel Links Combo Simulator
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A browser-based simulator for building, recording, and sharing Yu-Gi-Oh! Duel Links combos.
 
-Currently, two official plugins are available:
+**Live demo:** https://joseph-pq.github.io/yugioh-simulator
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+<div align="center">
 
-## React Compiler
+[![react](https://img.shields.io/badge/-React_19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![typescript](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+<br>
+[![tailwindcss](https://img.shields.io/badge/-Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![dnd-kit](https://img.shields.io/badge/-dnd--kit-FF6B6B?logo=drag&logoColor=white)](https://dndkit.com/)
+[![license](https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray)](LICENSE)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+</div>
 
-## Expanding the Oxlint configuration
+## Features
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+- Build a deck and set up the duel board
+- Record combo sequences step by step
+- Play back and share combos via URL
+
+## Getting Started
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:5173.
+
+## License
+
+[MIT](LICENSE)
