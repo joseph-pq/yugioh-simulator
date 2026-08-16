@@ -367,9 +367,6 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
         setEffectCardId(id)
         setTimeout(() => setEffectCardId(null), 1200)
         break
-      case 'remove_token':
-        game.removeToken(id, zone)
-        break
       case 'summon_atk':
       case 'ss_atk': {
         const target = MONSTER_ZONES.find(z => !board[z as keyof typeof board])
@@ -618,9 +615,9 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
           </div>
 
           <div className="col-span-2 border border-dashed border-amber-500/40 rounded-lg bg-[var(--color-bg-primary)]/40 p-1.5 flex flex-col justify-between min-w-0">
-            <div className="text-[10px] font-bold text-amber-400 mb-0.5 uppercase tracking-wider flex items-center justify-between">
-              <span>✨ Tokens</span>
-              <span className="text-[11px] font-mono text-amber-300 font-extrabold">∞</span>
+            <div className="text-[10px] font-bold text-amber-400 mb-0.5 uppercase tracking-wider flex items-center gap-1">
+              <span>TOKENS</span>
+              (<span className="text-[11px] font-mono text-amber-300 font-extrabold">∞</span>)
             </div>
             <TokenGeneratorBox onSelectCard={onSelectCard} onHoverCard={onHoverCard} />
           </div>

@@ -56,7 +56,6 @@ export default function CardContextMenu({ x, y, card, zone, onAction, onClose }:
 
   const actions: ActionItem[] = [
     { label: 'Activate Effect', icon: '⚡', action: 'activate_effect' },
-    ...(isToken ? [{ label: 'Remove Token', icon: '🗑️', action: 'remove_token' }] : []),
     { sep: true },
   ]
 
