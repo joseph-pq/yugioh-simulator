@@ -4,6 +4,7 @@ import { useCacheContext } from '../context/CacheContext'
 import { useDeck } from '../context/DeckContext'
 import { searchCards as apiSearchCards, normalizeCard } from '../services/ygoproApi'
 import { readYDKFile, exportYDK } from '../utils/ydkParser'
+import { trackEvent } from '../services/analytics'
 import type { CardData } from '../types'
 import CardDetailPanel from '../components/CardDetailPanel'
 import CardThumbnail from '../components/CardThumbnail'
@@ -59,6 +60,12 @@ export default function DeckBuilderPage() {
 
       const cards = (res.data || []).map(c => normalizeCard(c)).filter((c): c is CardData => c !== null)
       setSearchResults(cards)
+      trackEvent('card_search', {
+        query_length: searchQuery.trim().length,
+        result_count: cards.length,
+        filter: typeFilter,
+        duel_links_only: dlOnly,
+      })
       // Cache searched cards in IndexedDB
       if (cards.length > 0) {
         fetchAndCacheCards(cards.map(c => c.id)).catch(() => {})
@@ -87,6 +94,7 @@ export default function DeckBuilderPage() {
   const handleToggleDuelLinks = () => {
     const next = !duelLinksOnly
     setDuelLinksOnly(next)
+    trackEvent('ui_click', { control: 'toggle_duel_links_filter', screen: 'deck_builder', enabled: next })
     if (query.trim()) performSearch(query, filterType, next)
   }
 
@@ -101,6 +109,10 @@ export default function DeckBuilderPage() {
       }
     } else {
       showToast(`Added ${card.name} to deck`, 'success')
+      const isExtra = ['Fusion Monster', 'Synchro Monster', 'XYZ Monster', 'Link Monster'].some(
+        type => card.type?.includes(type) || card.humanType?.includes(type),
+      )
+      trackEvent('card_added', { deck_section: isExtra ? 'extra' : 'main' })
     }
   }, [deck, showToast])
 
@@ -130,6 +142,7 @@ export default function DeckBuilderPage() {
       await fetchAndCacheCards(allIds)
       deck.importDeck(parsed)
       showToast(`Imported ${parsed.main.length} main + ${(parsed.extra || []).length} extra deck cards`, 'success')
+      trackEvent('deck_import', { source: 'ydk_file', main_count: parsed.main.length, extra_count: (parsed.extra || []).length })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       showToast(`Import failed: ${message}`, 'error')
@@ -157,13 +170,24 @@ export default function DeckBuilderPage() {
     a.download = `${deck.deckName || 'deck'}.ydk`
     a.click()
     URL.revokeObjectURL(url)
+    trackEvent('deck_export', { main_count: deck.mainDeck.length, extra_count: deck.extraDeck.length })
   }, [deck])
 
   const handleSort = useCallback(async () => {
     if (deck.mainDeck.length === 0 && deck.extraDeck.length === 0) return
     await deck.sortDeck()
     showToast('Sorted deck cards', 'success')
+    trackEvent('ui_click', { control: 'sort_deck', screen: 'deck_builder' })
   }, [deck, showToast])
+
+  const handleClearDeck = useCallback(() => {
+    deck.clearDeck()
+    trackEvent('deck_cleared', { screen: 'deck_builder' })
+  }, [deck])
+
+  const handleSimulate = useCallback(() => {
+    trackEvent('deck_simulate', { main_count: deck.mainDeck.length, extra_count: deck.extraDeck.length })
+  }, [deck.extraDeck.length, deck.mainDeck.length])
 
   const countInDeck = (cardId: number) => deck.getCardCount(cardId)
 
@@ -221,7 +245,10 @@ export default function DeckBuilderPage() {
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => handleFilterChange(tab.id as any)}
+              onClick={() => {
+                handleFilterChange(tab.id as any)
+                trackEvent('ui_click', { control: `filter_${tab.id}`, screen: 'deck_builder' })
+              }}
                 className={`px-2 py-0.5 rounded font-medium transition-colors ${
                   filterType === tab.id
                     ? 'bg-[var(--color-gold-500)] text-black font-bold'
@@ -347,7 +374,7 @@ export default function DeckBuilderPage() {
               📶 Sort
             </button>
             <button
-              onClick={deck.clearDeck}
+              onClick={handleClearDeck}
               disabled={deck.mainDeck.length === 0 && deck.extraDeck.length === 0}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[var(--color-accent-rose)] hover:bg-[var(--color-accent-rose)]/10 border border-[var(--color-border)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -361,6 +388,7 @@ export default function DeckBuilderPage() {
                   : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] border border-[var(--color-border)] pointer-events-none opacity-40'
               }`}
               title={deck.validation.valid ? 'Open simulator with this deck' : 'Deck is not valid yet'}
+              onClick={handleSimulate}
             >
               ▶ Simulate
             </Link>

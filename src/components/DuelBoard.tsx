@@ -18,6 +18,7 @@ import { getCardImageUrl } from '../services/ygoproApi'
 import { getCardPositionCategory } from '../utils/cardType'
 import CardContextMenu from './CardContextMenu'
 import skillIcon from '../assets/skill.png'
+import { trackEvent } from '../services/analytics'
 
 const FIELD_NATURAL_WIDTH = 720
 const FIELD_NATURAL_HEIGHT = 480
@@ -447,8 +448,24 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
   const handleSkillClick = useCallback(() => {
     game.activateSkill()
+    trackEvent('simulator_action', { action: 'activate_skill' })
     setSkillActive(true)
     setTimeout(() => setSkillActive(false), 400)
+  }, [game])
+
+  const handleAdvancePhase = useCallback(() => {
+    game.advancePhase()
+    trackEvent('simulator_action', { action: 'advance_phase', phase: board.phase || 'dp', turn: board.turn || 'player' })
+  }, [board.phase, board.turn, game])
+
+  const handleShuffleDeck = useCallback(() => {
+    game.shuffleDeck()
+    trackEvent('simulator_action', { action: 'shuffle_deck' })
+  }, [game])
+
+  const handleSortDeck = useCallback(() => {
+    game.sortDeck()
+    trackEvent('simulator_action', { action: 'sort_deck' })
   }, [game])
 
   useEffect(() => {
@@ -574,7 +591,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
               <div className="flex items-end gap-2">
                 <VerticalStackPileZone zone={ZONES.BANISH} cards={board.banish} label="BANISH" color="var(--color-accent-blue)" effectCardId={effectCardId} hiddenCardId={hiddenPlaybackCardId} onContextMenu={handleContextMenu} onSelectCard={onSelectCard} onHoverCard={onHoverCard} activeCard={activeCard} />
                 <div className="flex flex-col items-center gap-2">
-                  <NextPhaseButton onClick={game.advancePhase} phase={board.phase || 'dp'} turn={board.turn || 'player'} />
+                  <NextPhaseButton onClick={handleAdvancePhase} phase={board.phase || 'dp'} turn={board.turn || 'player'} />
                   <SkillActionButton onClick={handleSkillClick} isActive={skillActive} />
                 </div>
               </div>
@@ -629,10 +646,10 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
             <div className="text-[10px] font-bold text-[var(--color-text-muted)] mb-1 uppercase tracking-wider flex items-center justify-between">
               <span>Main Deck ({board.deck.length})</span>
               <div className="flex items-center gap-2">
-                <button onClick={game.shuffleDeck} className="px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[9px] hover:bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] border border-[var(--color-border)] transition-colors">
+                <button onClick={handleShuffleDeck} className="px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[9px] hover:bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] border border-[var(--color-border)] transition-colors">
                   🔀 Shuffle Deck
                 </button>
-                <button onClick={game.sortDeck} className="px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[9px] hover:bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] border border-[var(--color-border)] transition-colors">
+                <button onClick={handleSortDeck} className="px-2 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[9px] hover:bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] border border-[var(--color-border)] transition-colors">
                   📶 Sort Deck
                 </button>
               </div>

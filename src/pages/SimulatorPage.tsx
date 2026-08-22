@@ -5,6 +5,7 @@ import { useDeck } from '../context/DeckContext'
 import { readStateFromUrl, pushStateToUrl, generateShareUrl } from '../services/urlState'
 import { fetchAndCacheCards } from '../services/cardCache'
 import { readYDKFile } from '../utils/ydkParser'
+import { trackEvent } from '../services/analytics'
 import DuelBoard from '../components/DuelBoard'
 import CardDetailPanel from '../components/CardDetailPanel'
 import ComboStepList from '../components/ComboStepList'
@@ -372,6 +373,7 @@ export default function SimulatorPage() {
       deck.importDeck(parsed)
       game.initBoard(parsed.main, parsed.extra || [], map)
       showToast('Deck imported successfully!', 'success')
+      trackEvent('deck_import', { source: 'ydk_file', main_count: parsed.main.length, extra_count: (parsed.extra || []).length })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       showToast(`Import failed: ${message}`, 'error')
@@ -443,6 +445,7 @@ export default function SimulatorPage() {
       .then(() => {
         pushStateToUrl(state)
         showToast('Share link copied to clipboard!', 'success')
+        trackEvent('combo_shared', { step_count: game.combo.length })
       })
       .catch(() => showToast('Failed to copy link', 'error'))
   }, [game.board, game.combo, mainDeck, extraDeck, deckName])
@@ -549,6 +552,11 @@ function CardStatsPanel({
   selectedCard?: CardData | null
   onClearCard: () => void
 }) {
+  const handleReturnAllToDecks = () => {
+    game.returnAllToDecks()
+    trackEvent('simulator_action', { action: 'return_all_to_decks' })
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex flex-col gap-2.5">
@@ -595,7 +603,7 @@ function CardStatsPanel({
         </div>
 
         <button
-          onClick={game.returnAllToDecks}
+          onClick={handleReturnAllToDecks}
           className="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow active:scale-95 flex items-center justify-center gap-1.5"
         >
           📥 Return All to Decks
@@ -616,6 +624,16 @@ function ComboRecorderPanel({
   game: GameContextValue
   onShare: () => void
 }) {
+  const handleStartRecording = () => {
+    game.startRecording()
+    trackEvent('combo_record_started')
+  }
+
+  const handleStopRecording = () => {
+    game.stopRecording()
+    trackEvent('combo_record_stopped', { step_count: game.combo.length })
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex flex-col gap-2">
@@ -632,14 +650,14 @@ function ComboRecorderPanel({
         <div className="flex items-center gap-1.5">
           {!game.recording ? (
             <button
-              onClick={game.startRecording}
+              onClick={handleStartRecording}
               className="flex-1 py-1.5 rounded bg-[var(--color-accent-rose)] text-white font-semibold text-xs transition-colors hover:bg-[var(--color-accent-rose)]/80"
             >
               🔴 Record
             </button>
           ) : (
             <button
-              onClick={game.stopRecording}
+              onClick={handleStopRecording}
               className="flex-1 py-1.5 rounded bg-[var(--color-text-secondary)] text-[var(--color-bg-primary)] font-semibold text-xs transition-colors hover:bg-[var(--color-text-primary)]"
             >
               ⏹ Stop
