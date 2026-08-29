@@ -391,6 +391,9 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
         setTargetCardId(id)
         setTimeout(() => setTargetCardId(null), 1200)
         break
+      case 'remove_token':
+        game.removeToken(id, zone)
+        break
       case 'summon_atk':
       case 'ss_atk': {
         const target = MONSTER_ZONES.find(z => !board[z as keyof typeof board])
