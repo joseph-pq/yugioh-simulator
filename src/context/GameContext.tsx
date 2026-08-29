@@ -415,6 +415,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
     updateBoardState(prev => prev, 'effect', { i: instanceId, z: zone, cardId: resolvedCardId })
   }, [board, updateBoardState])
 
+  const target = useCallback((instanceId: number, zone: string, cardId?: number) => {
+    let resolvedCardId = cardId
+    if (!resolvedCardId) {
+      const zones = ['hand', 'egy', 'gy', 'ebanish', 'banish', 'eextra', 'extra', 'deck', 'efree', 'free']
+      const sourceCard = (() => {
+        if (zones.includes(zone)) {
+          const zoneVal = board[zone as keyof BoardState]
+          return Array.isArray(zoneVal) ? zoneVal.find((c: CardInstance) => c.id === instanceId) || null : null
+        }
+        const zoneCard = board[zone as keyof BoardState]
+        return zoneCard && typeof zoneCard === 'object' && 'id' in zoneCard && (zoneCard as any).id === instanceId ? zoneCard : null
+      })() as CardInstance | null
+      resolvedCardId = sourceCard?.cardId
+    }
+
+    updateBoardState(prev => prev, 'target', { i: instanceId, z: zone, cardId: resolvedCardId })
+  }, [board, updateBoardState])
+
   const activateSkill = useCallback(() => {
     updateBoardState(prev => prev, 'skill', {})
   }, [updateBoardState])
@@ -527,6 +545,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     generateToken,
     removeToken,
     activateEffect,
+    target,
     activateSkill,
     advancePhase,
     resetBoard,

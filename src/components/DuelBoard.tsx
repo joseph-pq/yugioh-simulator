@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -26,6 +26,7 @@ const HORIZONTAL_STACK_ZONES = new Set<string>([ZONES.HAND, ZONES.DECK, ZONES.EX
 const HORIZONTAL_LAYOUT_CARD_WIDTH = 56
 const HORIZONTAL_AVAILABLE_WIDTH = 1100
 const HORIZONTAL_GAP = 3
+const TargetHighlightContext = createContext<number | null>(null)
 
 export interface DuelBoardProps {
   onSelectCard?: (card?: CardData) => void
@@ -110,7 +111,7 @@ function getZoneCenterPosition(zoneElement: HTMLElement): { x: number; y: number
  * Main Duel Board — Exact Duel Links Field Layout with:
  * - Flying card drag animation during record playback
  * - Dynamic vertical card spacing in GY and Banish piles so all cards remain visible regardless of count
- * - Highlight glow animation reserved exclusively for Effect Activation
+ * - Highlight glow animations for effect activation and targeting
  */
 export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps) {
   const game = useGame()
@@ -118,7 +119,8 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [activeCard, setActiveCard] = useState<ActiveCardData | null>(null)
   const [dragPosition, setDragPosition] = useState<string | null>(null)
-  const [effectCardId, setEffectCardId] = useState<number | null>(null) // Glow ONLY when effect is activated
+  const [effectCardId, setEffectCardId] = useState<number | null>(null)
+  const [targetCardId, setTargetCardId] = useState<number | null>(null)
   const [skillActive, setSkillActive] = useState(false)
   const [flyingCard, setFlyingCard] = useState<FlyingCardState | null>(null)
   const fieldWrapRef = useRef<HTMLDivElement>(null)
@@ -130,8 +132,9 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   const scaledFieldHeight = Math.round(FIELD_NATURAL_HEIGHT * fieldScale)
   const playbackGlowTimers = useRef<{
     effect: ReturnType<typeof setTimeout> | null
+    target: ReturnType<typeof setTimeout> | null
     skill: ReturnType<typeof setTimeout> | null
-  }>({ effect: null, skill: null })
+  }>({ effect: null, target: null, skill: null })
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -244,17 +247,19 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
     const glowTimers = playbackGlowTimers.current
     if (glowTimers.effect) clearTimeout(glowTimers.effect)
+    if (glowTimers.target) clearTimeout(glowTimers.target)
     if (glowTimers.skill) clearTimeout(glowTimers.skill)
 
     const step = game.playbackIndex >= 0 ? game.combo[game.playbackIndex] : null
 
     if (!step) {
       setEffectCardId(null)
+      setTargetCardId(null)
       setSkillActive(false)
       return undefined
     }
 
-    if (step.a === 'effect' || step.a === 'pos' || step.a === 'token' || step.a === 'removetoken') {
+    if (step.a === 'effect' || step.a === 'pos' || step.a === 'token' || step.a === 'removetoken' || step.a === 'target') {
       let cardId = step.i || step.instanceId
       if (!cardId && (step.z || step.to)) {
         const targetZone = (step.z || step.to) as string
@@ -263,22 +268,33 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
       }
       setSkillActive(false)
       if (cardId) {
-        setEffectCardId(cardId)
-        glowTimers.effect = setTimeout(() => setEffectCardId(null), effectGlowDuration)
+        if (step.a === 'target') {
+          setEffectCardId(null)
+          setTargetCardId(cardId)
+          glowTimers.target = setTimeout(() => setTargetCardId(null), effectGlowDuration)
+        } else {
+          setTargetCardId(null)
+          setEffectCardId(cardId)
+          glowTimers.effect = setTimeout(() => setEffectCardId(null), effectGlowDuration)
+        }
       } else {
         setEffectCardId(null)
+        setTargetCardId(null)
       }
     } else if (step.a === 'skill') {
       setEffectCardId(null)
+      setTargetCardId(null)
       setSkillActive(true)
       glowTimers.skill = setTimeout(() => setSkillActive(false), skillGlowDuration)
     } else {
       setEffectCardId(null)
+      setTargetCardId(null)
       setSkillActive(false)
     }
 
     return () => {
       if (glowTimers.effect) clearTimeout(glowTimers.effect)
+      if (glowTimers.target) clearTimeout(glowTimers.target)
       if (glowTimers.skill) clearTimeout(glowTimers.skill)
     }
   }, [game.playbackIndex, game.combo, game.playbackSpeed])
@@ -365,8 +381,15 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
     switch (action) {
       case 'activate_effect':
         game.activateEffect(id, zone, card.cardId)
+        setTargetCardId(null)
         setEffectCardId(id)
         setTimeout(() => setEffectCardId(null), 1200)
+        break
+      case 'target':
+        game.target(id, zone, card.cardId)
+        setEffectCardId(null)
+        setTargetCardId(id)
+        setTimeout(() => setTargetCardId(null), 1200)
         break
       case 'summon_atk':
       case 'ss_atk': {
@@ -484,6 +507,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   }, [])
 
   return (
+    <TargetHighlightContext.Provider value={targetCardId}>
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
       <div className="flex flex-col md:h-full select-none justify-between overflow-hidden">
         {/* Phase Tracker Bar */}
@@ -723,6 +747,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
         />
       )}
     </DndContext>
+    </TargetHighlightContext.Provider>
   )
 }
 
@@ -1161,6 +1186,7 @@ interface DraggableCardProps {
 }
 
 function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, onContextMenu, onClick, onMouseEnter, onMouseLeave, hoverDirection = 'up', isGhost }: DraggableCardProps) {
+  const targetCardId = useContext(TargetHighlightContext)
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${zone}-${card.id}`,
     data: { instanceId: card.id, cardId: card.cardId, fromZone: zone, data: card.data },
@@ -1186,7 +1212,8 @@ function DraggableCard({ card, zone, isFaceDown, isDefense, isEffectActivated, o
         ${isDragging ? dragClass : `${hoverClass} hover:z-50`}
         ${isGhost ? 'opacity-20' : ''}
         ${isDefense ? 'rotate-90' : ''}
-        ${isEffectActivated ? 'ring-4 ring-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.95)] scale-110 z-50 animate-pulse' : ''}`}
+        ${isEffectActivated ? 'ring-4 ring-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.95)] scale-110 z-50 animate-pulse' : ''}
+        ${card.id === targetCardId ? 'ring-4 ring-white shadow-[0_0_25px_rgba(255,255,255,0.95)] scale-110 z-50 animate-pulse' : ''}`}
       onContextMenu={(e) => onContextMenu(e, card, zone)}
       onClick={onClick}
       onMouseEnter={onMouseEnter}

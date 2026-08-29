@@ -145,6 +145,7 @@ export interface GameContextValue {
   generateToken: (targetZone?: string) => void
   removeToken: (instanceId: number, zone: string) => void
   activateEffect: (instanceId: number, zone: string, cardId?: number) => void
+  target: (instanceId: number, zone: string, cardId?: number) => void
   activateSkill: () => void
   advancePhase: () => void
   resetBoard: () => void

@@ -299,13 +299,13 @@ function renderStepIcon(step: ComboStep) {
     return <img src={skillIcon} alt="Skill" className="w-7 h-7 object-contain flex-shrink-0 drop-shadow" />
   }
 
-  if (step.a === 'move' || step.a === 'effect' || step.a === 'pos') {
+  if (step.a === 'move' || step.a === 'effect' || step.a === 'target' || step.a === 'pos') {
     if (cardId) {
       const isDef = step.p === POSITION.FACE_UP_DEF || step.p === POSITION.FACE_DOWN_DEF
       return <CardArtworkCrop cardId={cardId} isDef={isDef} isEffect={step.a === 'effect'} />
     }
     // Fallback if cardId was not saved in older step payload
-    const fallbackEmoji = step.a === 'effect' ? '⚡' : step.a === 'move' ? '↗️' : '🔄'
+    const fallbackEmoji = step.a === 'effect' ? '⚡' : step.a === 'target' ? '🎯' : step.a === 'move' ? '↗️' : '🔄'
     return <span className="flex-shrink-0 text-base">{fallbackEmoji}</span>
   }
 
@@ -365,6 +365,7 @@ function formatStep(step: ComboStep) {
     case 'token': return `Spawn Token → ${String(step.to || step.t || '').toUpperCase()}`
     case 'removetoken': return `Remove Token (${String(step.z || step.to || '').toUpperCase()})`
     case 'effect': return `Activate Effect (${String(step.z || step.to || '').toUpperCase()})`
+    case 'target': return `Target (${String(step.z || step.to || '').toUpperCase()})`
     case 'skill': return 'Activate Skill'
     case 'phase': return `Phase → ${String(step.phase || '').toUpperCase()} (${step.turn === 'opponent' ? 'Opponent' : 'Your'} Turn)`
     case 'reset_board': return 'Return All Cards to Decks'
