@@ -274,10 +274,11 @@ export default function SimulatorPage() {
                 } else if (action === 'lp' && val !== undefined) {
                   next.lp = val
                 } else if (action === 'token') {
+                  const tokenZone = targetZone || 'hand'
                   const tokenInstance = {
                     id: instanceId || (Date.now() + Math.random()),
                     cardId: 99999999,
-                    position: 'face_up_atk',
+                    position: ARRAY_ZONES.includes(tokenZone as any) ? undefined : position || 'fua',
                     data: {
                       id: 99999999,
                       name: 'Monster Token',
@@ -287,10 +288,10 @@ export default function SimulatorPage() {
                       desc: 'Monster Token',
                     }
                   }
-                  if (ARRAY_ZONES.includes((targetZone || 'hand') as any)) {
-                    (next[(targetZone || 'hand') as keyof BoardState] as CardInstance[]).push(tokenInstance)
+                  if (ARRAY_ZONES.includes(tokenZone as any)) {
+                    (next[tokenZone as keyof BoardState] as CardInstance[]).push(tokenInstance)
                   } else {
-                    (next as Record<string, any>)[targetZone || 'hand'] = tokenInstance
+                    (next as Record<string, any>)[tokenZone] = tokenInstance
                   }
                 } else if (action === 'removetoken') {
                   if (targetZone && ARRAY_ZONES.includes(targetZone as any)) {

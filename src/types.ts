@@ -142,7 +142,7 @@ export interface GameContextValue {
   moveCard: (instanceId: number, fromZone: string, toZone: string, position?: string) => void
   changePosition: (zone: string, newPosition: string) => void
   setLP: (lp: number) => void
-  generateToken: (targetZone?: string) => void
+  generateToken: (targetZone?: string, position?: string) => void
   removeToken: (instanceId: number, zone: string) => void
   activateEffect: (instanceId: number, zone: string, cardId?: number) => void
   target: (instanceId: number, zone: string, cardId?: number) => void

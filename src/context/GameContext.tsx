@@ -365,7 +365,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }, 'lp', { v: lp })
   }, [updateBoardState])
 
-  const generateToken = useCallback((targetZone = 'hand') => {
+  const generateToken = useCallback((targetZone = 'hand', position = POSITION.FACE_UP_ATK) => {
     let createdId = 0
     updateBoardState(prev => {
       const tokenInstance = makeInstance(99999999, {
@@ -388,13 +388,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
       } else {
         const existing = prev[targetZone as keyof BoardState] as CardInstance | null
         if (existing === null) {
-          ; (prev as Record<string, CardInstance | null>)[targetZone] = { ...tokenInstance, position: POSITION.FACE_UP_ATK }
+          ; (prev as Record<string, CardInstance | null>)[targetZone] = { ...tokenInstance, position }
         } else {
           prev.hand.push(tokenInstance)
         }
       }
       return prev
-    }, 'token', { to: targetZone, i: createdId, cardId: 99999999 })
+    }, 'token', { to: targetZone, p: position, i: createdId, cardId: 99999999 })
   }, [updateBoardState])
 
   const activateEffect = useCallback((instanceId: number, zone: string, cardId?: number) => {

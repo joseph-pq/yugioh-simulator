@@ -55,6 +55,10 @@ interface ActiveCardData {
   data?: CardData
 }
 
+function isTokenCard(card: ActiveCardData): boolean {
+  return card.cardId === 99999999 || card.data?.type === 'Token'
+}
+
 function getPositionLabel(position: string | null): string | null {
   switch (position) {
     case POSITION.FACE_UP_ATK: return 'Face-up ATK'
@@ -306,7 +310,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
 
     const category = getCardPositionCategory(card.data)
     setDragPosition(
-      category === 'monster'
+      isTokenCard(card) || category === 'monster'
         ? POSITION.FACE_UP_ATK
         : category === 'spell-trap'
           ? POSITION.FACE_UP
@@ -317,10 +321,13 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
   useEffect(() => {
     if (!activeCard) return
 
+    const isToken = isTokenCard(activeCard)
     const category = getCardPositionCategory(activeCard.data)
-    if (category === 'unknown') return
+    if (category === 'unknown' && !isToken) return
 
-    const positions: string[] = category === 'monster'
+    const positions: string[] = isToken
+      ? [POSITION.FACE_UP_ATK, POSITION.FACE_UP_DEF]
+      : category === 'monster'
       ? [POSITION.FACE_UP_ATK, POSITION.FACE_UP_DEF, POSITION.FACE_DOWN_DEF]
       : [POSITION.FACE_UP, POSITION.FACE_DOWN]
 
@@ -350,7 +357,7 @@ export default function DuelBoard({ onSelectCard, onHoverCard }: DuelBoardProps)
     const toZone = String(over.id)
 
     if (fromZone === 'token_generator') {
-      game.generateToken(toZone)
+      game.generateToken(toZone, selectedDragPosition || POSITION.FACE_UP_ATK)
       return
     }
 

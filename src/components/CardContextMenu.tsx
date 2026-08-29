@@ -61,7 +61,7 @@ export default function CardContextMenu({ x, y, card, zone, onAction, onClose }:
     { sep: true },
   ]
 
-  if (isHand || isDeck || isFree) {
+  if ((isHand || isDeck || isFree) && !isToken) {
     actions.push({ label: 'Set (face-down DEF)', icon: '🔽', action: 'set_monster' })
   }
 
@@ -72,10 +72,10 @@ export default function CardContextMenu({ x, y, card, zone, onAction, onClose }:
         actions.push({ label: 'Flip face-up (DEF)', icon: '🔃', action: 'flip_def' })
       } else if (pos === POSITION.FACE_UP_ATK) {
         actions.push({ label: 'Change to DEF', icon: '🛡️', action: 'to_def' })
-        actions.push({ label: 'Set face-down', icon: '🔽', action: 'to_facedown' })
+        if (!isToken) actions.push({ label: 'Set face-down', icon: '🔽', action: 'to_facedown' })
       } else {
         actions.push({ label: 'Change to ATK', icon: '⚔️', action: 'to_atk' })
-        actions.push({ label: 'Set face-down', icon: '🔽', action: 'to_facedown' })
+        if (!isToken) actions.push({ label: 'Set face-down', icon: '🔽', action: 'to_facedown' })
       }
     }
     if (isSpellZone || isFieldZone) {
