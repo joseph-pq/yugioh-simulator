@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 import { fetchAndCacheCards } from '../services/cardCache'
 import { validateDuelLinksDeck } from '../utils/ydkParser'
+import { isExtraDeckMonster } from '../utils/cardType'
 import type { CardData, DeckContextValue, DeckValidationResult } from '../types'
 
 const DeckContext = createContext<DeckContextValue | null>(null)
@@ -56,9 +57,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   }, [mainDeck, revalidate])
 
   const addCard = useCallback((card: CardData) => {
-    const isExtra = ['Fusion Monster', 'Synchro Monster', 'XYZ Monster', 'Link Monster'].some(
-      t => card.type?.includes(t) || card.humanType?.includes(t),
-    )
+    const isExtra = isExtraDeckMonster(card)
 
     const allIds = [...mainDeck, ...extraDeck]
     const currentCount = allIds.filter(id => id === card.id).length

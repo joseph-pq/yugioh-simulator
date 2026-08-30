@@ -3,6 +3,8 @@ import type { CardData } from '../types'
 export type CardTypeCategory = 'monster' | 'spell' | 'trap' | 'unknown'
 export type CardPositionCategory = 'monster' | 'spell-trap' | 'unknown'
 
+const EXTRA_DECK_KEYWORDS = ['fusion', 'synchro', 'xyz', 'link']
+
 /**
  * YGOPRO provides descriptive type strings (for example, "Effect Monster")
  * rather than a single card-family field. Keep keyword matching centralized
@@ -26,4 +28,19 @@ export function isSpellOrTrap(card: Pick<CardData, 'type'> | null | undefined): 
 export function getCardPositionCategory(card: Pick<CardData, 'type'> | null | undefined): CardPositionCategory {
   if (isSpellOrTrap(card)) return 'spell-trap'
   return getCardTypeCategory(card) === 'monster' ? 'monster' : 'unknown'
+}
+
+/**
+ * Extra Deck monsters may use combined subtype labels, such as
+ * "Synchro Tuner Effect Monster", so do not rely on an exact type phrase.
+ */
+export function isExtraDeckMonster(
+  card: Pick<CardData, 'type' | 'humanType' | 'frameType'> | null | undefined,
+): boolean {
+  const cardTypes = [card?.frameType, card?.type, card?.humanType]
+    .filter((value): value is string => Boolean(value))
+    .join(' ')
+    .toLowerCase()
+
+  return EXTRA_DECK_KEYWORDS.some(keyword => cardTypes.includes(keyword))
 }

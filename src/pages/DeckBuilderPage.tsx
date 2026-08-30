@@ -4,6 +4,7 @@ import { useCacheContext } from '../context/CacheContext'
 import { useDeck } from '../context/DeckContext'
 import { searchCards as apiSearchCards, normalizeCard } from '../services/ygoproApi'
 import { readYDKFile, exportYDK } from '../utils/ydkParser'
+import { isExtraDeckMonster } from '../utils/cardType'
 import { trackEvent } from '../services/analytics'
 import type { CardData } from '../types'
 import CardDetailPanel from '../components/CardDetailPanel'
@@ -109,9 +110,7 @@ export default function DeckBuilderPage() {
       }
     } else {
       showToast(`Added ${card.name} to deck`, 'success')
-      const isExtra = ['Fusion Monster', 'Synchro Monster', 'XYZ Monster', 'Link Monster'].some(
-        type => card.type?.includes(type) || card.humanType?.includes(type),
-      )
+      const isExtra = isExtraDeckMonster(card)
       trackEvent('card_added', { deck_section: isExtra ? 'extra' : 'main' })
     }
   }, [deck, showToast])
