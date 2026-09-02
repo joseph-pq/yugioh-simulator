@@ -125,8 +125,8 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       const catB = getSortCategory(cardB)
       if (catA !== catB) return catA - catB
 
-      const levelA = cardA.level ?? cardA.rank ?? 0
-      const levelB = cardB.level ?? cardB.rank ?? 0
+      const levelA = cardA.level ?? (typeof cardA.rank === 'number' ? cardA.rank : 0)
+      const levelB = cardB.level ?? (typeof cardB.rank === 'number' ? cardB.rank : 0)
       if (levelA !== levelB) return levelB - levelA
 
       return cardA.name.localeCompare(cardB.name)

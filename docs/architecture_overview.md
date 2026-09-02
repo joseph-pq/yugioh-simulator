@@ -41,6 +41,10 @@ yugioh-simulator/
 │   │   └── urlState.ts         # LZ-String state encoding/decoding for shareable URLs
 │   ├── utils/
 │   │   └── ydkParser.ts        # .ydk file parsing, export, & Duel Links deck validation rules
+│   ├── game/                   # Framework-independent duel rules and replay engine
+│   │   ├── board.ts            # Zone groups, board factory, instances, token data
+│   │   ├── transitions.ts      # Pure card movement, draw, token, sorting, and phase rules
+│   │   └── replay.ts           # Shared URL setup extraction and combo replay
 │   ├── hooks/
 │   │   └── useMediaQuery.ts    # Viewport breakpoint helper for simulator layout
 │   ├── components/
@@ -76,6 +80,11 @@ yugioh-simulator/
   - Maintains `history` (array of `BoardState` snapshots) for step jump, undo, and redo.
   - Exposes actions: `draw()`, `shuffleDeck()`, `sortDeck()`, `moveCard()`, `changePosition()`, `setLP()`, `sendToGY()`, `sendToBanish()`, `addToHand()`, `returnToDeck()`, `millCards()`, `generateToken()`, `removeToken()`, `activateEffect()`, `activateSkill()`, `returnAllToDecks()`.
   - Manages `recording` mode to automatically append `ComboStep` records onto the step stack.
+
+### 2.1 Game rules and replay (`src/game/`)
+- **`board.ts`** is the canonical place for board construction, zone groupings, card instance IDs, and token data.
+- **`transitions.ts`** contains pure, framework-independent board mutations. React components should request these actions through `GameContext`; they should not mutate zones directly.
+- **`replay.ts`** reconstructs a shared combo from its initial board and recorded steps. Its pure API is deliberately covered by unit tests, making it the quickest place for a new contributor to learn how a combo evolves.
 
 ### 3. File Import & Export (`src/utils/ydkParser.ts`)
 - **YDK Parsing**: Reads `.ydk` files line by line under `#main`, `#extra`, and `!side` headers. Converts passcodes to numeric card IDs.
@@ -117,6 +126,15 @@ yugioh-simulator/
 - Collapsed panels open as full-width bottom drawers (`85dvh`) over a dimmed backdrop. Selecting a card on the collapsed layout opens the card drawer (hover is disabled while collapsed).
 - [DuelBoard.tsx](../src/components/DuelBoard.tsx) scales the fixed-size field with `transform: scale` based on container width (`min(1, width / 720)`). Hand, Extra, and Tokens stay in one compact 12-column row instead of stacking.
 - [Layout.tsx](../src/components/Layout.tsx) shortens the nav on small screens (hides title and Ready chip).
+
+### 8. Automated tests
+
+Run `npm test` for the fast unit suite. Tests are colocated with the pure code they document:
+
+- `src/game/replay.test.ts` demonstrates stable board setup and combo replay.
+- `src/utils/ydkParser.test.ts` demonstrates YDK parsing and deck-rule validation.
+
+`npm run build` runs TypeScript type-checking before Vite produces the production bundle.
 
 ---
 

@@ -1,18 +1,9 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from 'react'
-import type { BoardState, CardData, CardInstance, ComboStep, GameContextValue, Phase, TurnOwner } from '../types'
-import { ZONES } from '../types'
-import { getCardTypeCategory } from '../utils/cardType'
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react'
+import type { BoardState, CardData, CardInstance, ComboStep, GameContextValue } from '../types'
+import { ARRAY_ZONES, BOARD_ZONES, cloneBoard, createEmptyBoard, makeInstance, MONSTER_ZONES, POSITION, resetInstanceIds, SPELL_ZONES, TOKEN_CARD } from '../game/board'
+import { addTokenToBoard, advancePhase as getNextPhase, changeCardPosition, drawCards, moveCardOnBoard, removeTokenFromBoard, returnAllCardsToDecks, sortDeck as sortBoardDeck } from '../game/transitions'
 
 const GameContext = createContext<GameContextValue | null>(null)
-
-const getOrderValue = (card: CardData | null | undefined): number => {
-  switch (getCardTypeCategory(card)) {
-    case 'spell': return 2
-    case 'trap': return 3
-    case 'monster': return 1
-    default: return card ? 1 : 0
-  }
-}
 
 export function useGame() {
   const ctx = useContext(GameContext)
@@ -20,116 +11,7 @@ export function useGame() {
   return ctx
 }
 
-
-export const MONSTER_ZONES = [ZONES.M1, ZONES.M2, ZONES.M3, ZONES.EMZ1, ZONES.EMZ2]
-export const SPELL_ZONES = [ZONES.ST1, ZONES.ST2, ZONES.ST3]
-export const BOARD_ZONES = [...MONSTER_ZONES, ...SPELL_ZONES, ZONES.FIELD, ZONES.EXTRA_PILE]
-
-export const ARRAY_ZONES = [
-  ZONES.HAND,
-  ZONES.GY,
-  ZONES.EGY,
-  ZONES.BANISH,
-  ZONES.EBANISH,
-  ZONES.DECK,
-  ZONES.EXTRA,
-  ZONES.EEXTRA,
-  ZONES.FREE,
-  ZONES.EFREE,
-] as const
-
-const SINGLE_ZONES = [
-  ZONES.M1,
-  ZONES.M2,
-  ZONES.M3,
-  ZONES.EM1,
-  ZONES.EM2,
-  ZONES.EM3,
-  ZONES.ST1,
-  ZONES.ST2,
-  ZONES.ST3,
-  ZONES.EST1,
-  ZONES.EST2,
-  ZONES.EST3,
-  ZONES.FIELD,
-  ZONES.EFIELD,
-  ZONES.EMZ1,
-  ZONES.EMZ2,
-  ZONES.EXTRA_PILE,
-  ZONES.EEXTRA_PILE,
-] as const
-
-export const POSITION = {
-  FACE_UP_ATK: 'fua',
-  FACE_UP_DEF: 'fud',
-  FACE_DOWN_DEF: 'fdd',
-  FACE_DOWN: 'fd',
-  FACE_UP: 'fu',
-} as const
-
-const EXTRA_FRAME_KEYWORDS = ['fusion', 'synchro', 'xyz', 'link']
-
-function isExtraDeckCard(card: CardInstance) {
-  const frame = (card.data?.frameType ?? '').toLowerCase()
-
-  return EXTRA_FRAME_KEYWORDS.some(keyword => frame.includes(keyword))
-}
-
-function isToken(card: CardInstance) {
-  const frame = (card.data?.frameType ?? '').toLowerCase()
-
-  return frame.includes('token')
-}
-
-export function createEmptyBoard(): BoardState {
-  return {
-    hand: [],
-    m1: null,
-    m2: null,
-    m3: null,
-    est1: null,
-    est2: null,
-    est3: null,
-    em1: null,
-    em2: null,
-    em3: null,
-    st1: null,
-    st2: null,
-    st3: null,
-    field: null,
-    efield: null,
-    gy: [],
-    egy: [],
-    ebanish: [],
-    banish: [],
-    deck: [],
-    extra: [],
-    eextra: [],
-    free: [],
-    efree: [],
-    emz1: null,
-    emz2: null,
-    extra_pile: null,
-    eextra_pile: null,
-    lp: 4000,
-    turn: 'player',
-    phase: 'dp',
-  }
-}
-
-let nextInstanceId = 1
-export function makeInstance(cardId: number, data: CardData | null | undefined): CardInstance {
-  return { id: nextInstanceId++, cardId, data }
-}
-
-function shuffleArray<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
-      ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
+export { ARRAY_ZONES, BOARD_ZONES, createEmptyBoard, makeInstance, MONSTER_ZONES, POSITION, SPELL_ZONES }
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const [recording, setRecording] = useState(false)
@@ -148,7 +30,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const board = history[historyIndex] || history[0] || createEmptyBoard()
 
   const initBoard = useCallback((mainIds: number[], extraIds: number[], cardDataMap: Record<number, CardData | undefined>) => {
-    nextInstanceId = 1
+    resetInstanceIds()
     cardsRef.current = cardDataMap
 
     initialMainIds.current = mainIds
@@ -176,7 +58,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const updateBoardState = useCallback((updater: (prev: BoardState) => BoardState, action: string, detail: Record<string, unknown>) => {
     setHistory(prev => {
       const currentBoard = prev[historyIndex] || createEmptyBoard()
-      const nextBoard = updater(JSON.parse(JSON.stringify(currentBoard)) as BoardState)
+      const nextBoard = updater(cloneBoard(currentBoard))
 
       const nextHistory = prev.slice(0, historyIndex + 1)
       nextHistory.push(nextBoard)
@@ -194,109 +76,25 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [historyIndex, recording])
 
   const draw = useCallback((count = 1) => {
-    updateBoardState(prev => {
-      if (prev.deck.length === 0) return prev
-      const n = Math.min(count, prev.deck.length)
-      const drawn = prev.deck.slice(0, n)
-      prev.deck = prev.deck.slice(n)
-      prev.hand = [...prev.hand, ...drawn]
-      return prev
-    }, 'draw', { n: count })
+    updateBoardState(prev => drawCards(prev, count), 'draw', { n: count })
   }, [updateBoardState])
 
   const shuffleDeck = useCallback(() => {
     updateBoardState(prev => {
-      prev.deck = shuffleArray(prev.deck)
+      for (let i = prev.deck.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[prev.deck[i], prev.deck[j]] = [prev.deck[j], prev.deck[i]]
+      }
       return prev
     }, 'shuffle', {})
   }, [updateBoardState])
 
   const sortDeck = useCallback(() => {
-    updateBoardState(prev => {
-      prev.deck.sort((a, b) => {
-        const cardA = cardsRef.current[a.cardId]
-        const cardB = cardsRef.current[b.cardId]
-        if (!cardA || !cardB) return 0
-        const typeA = getOrderValue(cardA)
-        const typeB = getOrderValue(cardB)
-        if (typeA !== typeB) return typeA - typeB
-        return cardA.name.localeCompare(cardB.name)
-      })
-      return prev
-    }, 'sort', {})
+    updateBoardState(prev => sortBoardDeck(prev, cardsRef.current), 'sort', {})
   }, [updateBoardState])
 
   const returnAllToDecks = useCallback(() => {
-    updateBoardState(prev => {
-      const main: CardInstance[] = []
-      const extra: CardInstance[] = []
-
-      // Collect cards from array zones
-      ARRAY_ZONES.forEach(zone => {
-        prev[zone].forEach(card => {
-          if (isToken(card)) {
-            return
-          }
-
-          if (isExtraDeckCard(card)) {
-            extra.push(card)
-          } else {
-            main.push(card)
-          }
-        })
-
-        prev[zone] = []
-      })
-
-      // Collect cards from single-card zones
-      SINGLE_ZONES.forEach(zone => {
-        const card = prev[zone]
-
-        if (!card) {
-          return
-        }
-
-        if (!isToken(card)) {
-          if (isExtraDeckCard(card)) {
-            extra.push(card)
-          } else {
-            main.push(card)
-          }
-        }
-
-        prev[zone] = null
-      })
-
-      prev.deck = main
-      prev.extra = extra
-
-      // Reuse your existing sort algorithm
-      prev.deck.sort((a, b) => {
-        const cardA = cardsRef.current[a.cardId]
-        const cardB = cardsRef.current[b.cardId]
-
-        if (!cardA || !cardB) return 0
-
-        const typeA = getOrderValue(cardA)
-        const typeB = getOrderValue(cardB)
-
-        if (typeA !== typeB)
-          return typeA - typeB
-
-        return cardA.name.localeCompare(cardB.name)
-      })
-
-      prev.extra.sort((a, b) => {
-        const cardA = cardsRef.current[a.cardId]
-        const cardB = cardsRef.current[b.cardId]
-
-        if (!cardA || !cardB) return 0
-
-        return cardA.name.localeCompare(cardB.name)
-      })
-
-      return prev
-    }, 'reset_board', {})
+    updateBoardState(prev => returnAllCardsToDecks(prev, cardsRef.current), 'reset_board', {})
   }, [updateBoardState])
 
   const moveCard = useCallback((instanceId: number, fromZone: string, toZone: string, position?: string) => {
@@ -311,51 +109,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return zoneCard && typeof zoneCard === 'object' && 'id' in zoneCard && zoneCard.id === instanceId ? zoneCard : null
     })() as CardInstance | null
 
-    updateBoardState(prev => {
-      let card: CardInstance | null = null
-
-      if (zones.includes(fromZone)) {
-        const arr = prev[fromZone as keyof BoardState] as CardInstance[]
-        const idx = arr.findIndex(c => c.id === instanceId)
-        if (idx !== -1) {
-          card = arr[idx]
-          arr.splice(idx, 1)
-        }
-      } else {
-        card = prev[fromZone as keyof BoardState] as CardInstance | null
-        if (card && card.id === instanceId) {
-          ; (prev as Record<string, CardInstance | null>)[fromZone] = null
-        } else {
-          card = null
-        }
-      }
-
-      if (!card) return prev
-
-      if (zones.includes(toZone)) {
-        ; (prev[toZone as keyof BoardState] as CardInstance[]).push(card)
-      } else {
-        if (prev[toZone as keyof BoardState] !== null) {
-          prev.hand.push(prev[toZone as keyof BoardState] as CardInstance)
-        }
-        ; (prev as Record<string, CardInstance | null>)[toZone] = { ...card, position: position || POSITION.FACE_UP_ATK }
-      }
-
-      return prev
-    }, 'move', {
+    updateBoardState(prev => moveCardOnBoard(prev, instanceId, fromZone, toZone, position), 'move', {
       i: instanceId, cardId: sourceCard?.cardId, f: fromZone, to: toZone, p: position,
     })
   }, [board, updateBoardState])
 
   const changePosition = useCallback((zone: string, newPosition: string) => {
     const card = (board[zone as keyof BoardState] as CardInstance | null)
-    updateBoardState(prev => {
-      const current = prev[zone as keyof BoardState] as CardInstance | null
-      if (current) {
-        current.position = newPosition
-      }
-      return prev
-    }, 'pos', { z: zone, p: newPosition, i: card?.id, cardId: card?.cardId })
+    updateBoardState(prev => changeCardPosition(prev, zone, newPosition, card?.id), 'pos', { z: zone, p: newPosition, i: card?.id, cardId: card?.cardId })
   }, [board, updateBoardState])
 
   const setLP = useCallback((lp: number) => {
@@ -365,36 +126,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }, 'lp', { v: lp })
   }, [updateBoardState])
 
-  const generateToken = useCallback((targetZone = 'hand', position = POSITION.FACE_UP_ATK) => {
+  const generateToken = useCallback((targetZone = 'hand', position: string = POSITION.FACE_UP_ATK) => {
     let createdId = 0
     updateBoardState(prev => {
-      const tokenInstance = makeInstance(99999999, {
-        id: 99999999,
-        name: 'Monster Token',
-        type: 'Token',
-        humanType: 'Token Monster',
-        frameType: 'token',
-        race: 'Cyberse',
-        attribute: 'LIGHT',
-        atk: 0,
-        def: 0,
-        level: 1,
-        desc: 'This card can be used as any Monster Token.',
-      })
+      const tokenInstance = makeInstance(TOKEN_CARD.id, TOKEN_CARD)
       createdId = tokenInstance.id
-
-      if ((ARRAY_ZONES as readonly string[]).includes(targetZone)) {
-        ; (prev[targetZone as keyof BoardState] as CardInstance[]).push(tokenInstance)
-      } else {
-        const existing = prev[targetZone as keyof BoardState] as CardInstance | null
-        if (existing === null) {
-          ; (prev as Record<string, CardInstance | null>)[targetZone] = { ...tokenInstance, position }
-        } else {
-          prev.hand.push(tokenInstance)
-        }
-      }
-      return prev
-    }, 'token', { to: targetZone, p: position, i: createdId, cardId: 99999999 })
+      return addTokenToBoard(prev, tokenInstance, targetZone, position)
+    }, 'token', { to: targetZone, p: position, i: createdId, cardId: TOKEN_CARD.id })
   }, [updateBoardState])
 
   const activateEffect = useCallback((instanceId: number, zone: string, cardId?: number) => {
@@ -438,53 +176,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [updateBoardState])
 
   const advancePhase = useCallback(() => {
-    const phases: Phase[] = ['dp', 'sp', 'mp1', 'bp', 'ep']
-
-    // Compute next phase/turn from current board state first so the combo detail is correct
     const currentBoard = history[historyIndex] || createEmptyBoard()
-    const currentPhase = currentBoard.phase || 'dp'
-    const currentTurn = currentBoard.turn || 'player'
-    const currIdx = phases.indexOf(currentPhase)
-
-    let nextPhase: Phase
-    let nextTurn: TurnOwner
-
-    if (currIdx === -1 || currIdx === phases.length - 1) {
-      nextPhase = 'dp'
-      nextTurn = currentTurn === 'player' ? 'opponent' : 'player'
-    } else {
-      nextPhase = phases[currIdx + 1]
-      nextTurn = currentTurn
-    }
+    const { phase, turn } = getNextPhase(currentBoard)
 
     updateBoardState(prev => {
-      prev.phase = nextPhase
-      prev.turn = nextTurn
+      prev.phase = phase
+      prev.turn = turn
       return prev
-    }, 'phase', { phase: nextPhase, turn: nextTurn })
+    }, 'phase', { phase, turn })
   }, [updateBoardState, history, historyIndex])
 
   const removeToken = useCallback((instanceId: number, zone: string) => {
-    updateBoardState(prev => {
-      if ((ARRAY_ZONES as readonly string[]).includes(zone)) {
-        const arr = prev[zone as keyof BoardState] as CardInstance[]
-        if (Array.isArray(arr)) {
-          let idx = arr.findIndex(c => c.id === instanceId)
-          if (idx === -1) {
-            idx = arr.findIndex(c => isToken(c))
-          }
-          if (idx !== -1) {
-            arr.splice(idx, 1)
-          }
-        }
-      } else {
-        const current = prev[zone as keyof BoardState] as CardInstance | null
-        if (current && (current.id === instanceId || isToken(current))) {
-          ; (prev as Record<string, CardInstance | null>)[zone] = null
-        }
-      }
-      return prev
-    }, 'removetoken', { i: instanceId, z: zone, cardId: 99999999 })
+    updateBoardState(prev => removeTokenFromBoard(prev, instanceId, zone), 'removetoken', { i: instanceId, z: zone, cardId: TOKEN_CARD.id })
   }, [updateBoardState])
 
   const resetBoard = useCallback(() => {
@@ -498,7 +201,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const startRecording = useCallback(() => {
     setCombo([])
-    setHistory([JSON.parse(JSON.stringify(board)) as BoardState])
+    setHistory([cloneBoard(board)])
     setHistoryIndex(0)
     setRecording(true)
     setPlaybackVisualizing(false)
