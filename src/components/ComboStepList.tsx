@@ -25,13 +25,26 @@ export default function ComboStepList({ combo, currentIndex, onJumpTo, onResetRe
   const listContainerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    if (currentIndex >= 0 && activeStepRef.current) {
-      activeStepRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-      })
-    } else if (currentIndex < 0 && listContainerRef.current) {
-      listContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+    const listContainer = listContainerRef.current
+    const activeStep = activeStepRef.current
+
+    if (currentIndex >= 0 && listContainer && activeStep) {
+      const listBounds = listContainer.getBoundingClientRect()
+      const stepBounds = activeStep.getBoundingClientRect()
+
+      if (stepBounds.top < listBounds.top) {
+        listContainer.scrollTo({
+          top: listContainer.scrollTop + stepBounds.top - listBounds.top,
+          behavior: 'smooth',
+        })
+      } else if (stepBounds.bottom > listBounds.bottom) {
+        listContainer.scrollTo({
+          top: listContainer.scrollTop + stepBounds.bottom - listBounds.bottom,
+          behavior: 'smooth',
+        })
+      }
+    } else if (currentIndex < 0 && listContainer) {
+      listContainer.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }, [currentIndex])
 
