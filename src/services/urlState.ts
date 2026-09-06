@@ -16,6 +16,23 @@ export interface ShareableState {
   tokens?: TokenInitInfo[]
 }
 
+export const MAX_COMBO_STEPS = 100
+export const MAX_COMBO_PAYLOAD_BYTES = 64 * 1024
+
+export function readShortComboSlug(hash = window.location.hash): string | null {
+  const match = hash.match(/^#\/c\/([A-Za-z0-9]{12})\/?$/)
+  return match?.[1] || null
+}
+
+export function validatePublishableState(state: ShareableState): string | null {
+  if (!Array.isArray(state.main) || !Array.isArray(state.extra)) return 'A combo must include main and extra deck lists.'
+  if (![...state.main, ...state.extra].every(id => Number.isSafeInteger(id) && id > 0)) return 'A combo contains an invalid card ID.'
+  if ((state.combo?.length || 0) > MAX_COMBO_STEPS) return `Combos are limited to ${MAX_COMBO_STEPS} steps.`
+  if (!Array.isArray(state.combo || [])) return 'A combo contains invalid steps.'
+  if (new TextEncoder().encode(JSON.stringify(state)).length > MAX_COMBO_PAYLOAD_BYTES) return 'This combo is too large to publish.'
+  return null
+}
+
 interface CompactState {
   m: number[]
   e: number[]

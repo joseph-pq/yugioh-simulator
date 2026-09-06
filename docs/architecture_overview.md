@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **Yu-Gi-Oh! Duel Links Combo Simulator** is a 100% client-side React + TypeScript web application built with Vite and TailwindCSS v4. It allows Yu-Gi-Oh! Duel Links players to build decks (via YDK file import/export), test opening hands, simulate duels, record step-by-step solo combos, and share full interactive combos via compressed URL hashes without requiring any backend server or user account.
+The **Yu-Gi-Oh! Duel Links Combo Simulator** is a React + TypeScript web application built with Vite and TailwindCSS v4. Its simulator remains client-side and works anonymously; an optional Supabase backend adds Google/Discord sign-in, persisted short-link combos, and per-account limits.
 
 ---
 
@@ -13,6 +13,7 @@ The **Yu-Gi-Oh! Duel Links Combo Simulator** is a 100% client-side React + TypeS
 - **State & Storage**: React Context API (`CacheContext`, `DeckContext`, `GameContext`) + IndexedDB (`idb` v8) for offline card caching
 - **Drag and Drop**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
 - **Data Compression & Sharing**: `lz-string` (Compresses deck & step history into the hash-router query `#/sim?d=...`)
+- **Optional combo backend**: Supabase Auth, Postgres migrations, and a server-side Edge Function for short links (`#/c/<12-character-id>`)
 - **Card Data Source**: [YGOPRODeck API v7](https://db.ygoprodeck.com/api/v7/cardinfo.php) (Filtered for *Duel Links* format)
 
 ---
@@ -102,6 +103,15 @@ yugioh-simulator/
 - Compacts deck lists and recorded combo steps into lightweight JSON structures.
 - Uses `lz-string` to encode compressed state into base64 URI strings embedded in the simulator hash route (`#/sim?d=...`), which works on static hosts such as GitHub Pages.
 - When a shared URL is opened, `SimulatorPage.tsx` automatically decodes the hash, fetches any uncached card IDs, reconstructs the initial deck board state, and replays all history steps to recreate the recorded combo.
+- Legacy self-contained `#/sim?d=...` links remain anonymous and supported. When Supabase is configured, signed-in users can publish a compact `#/c/<slug>` link. The app fetches the saved payload and then follows the same card-cache and replay path.
+
+### 5.1 Optional online accounts and short links
+
+- `AuthContext.tsx` owns the optional Supabase session and Google/Discord OAuth state. No account is created unless a visitor chooses to sign in.
+- `MyCombosPage.tsx` lists, renames, updates, copies, and deletes a user's saved combos. A user can delete their account and all saved combos after confirmation.
+- The browser contains only the Supabase project URL and publishable key. It never receives a secret/service-role key.
+- `supabase/functions/combos` is the only public backend boundary for saved combos. It verifies the caller JWT for mutations, validates title and payload limits, and calls a transactional database function for slug generation, the 25-combo quota, and 10-per-hour user / 30-per-hour hashed-IP publish limits.
+- `profiles` and `combos` have RLS enabled and browser roles have no direct table privileges. The Edge Function's service role performs authorized operations, so copying frontend requests cannot grant a caller access to another account's combos.
 
 ### 6. UI & Interactive Field (`src/components/`)
 - **`DuelBoard.tsx`**:

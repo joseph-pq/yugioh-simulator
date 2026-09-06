@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import type { CardInstance, CardData, GameContextValue } from '../types'
+import { useParams } from 'react-router-dom'
+import type { CardData, GameContextValue } from '../types'
 import { useGame } from '../context/GameContext'
 import { useDeck } from '../context/DeckContext'
-import { readStateFromUrl, pushStateToUrl, generateShareUrl } from '../services/urlState'
+import { encodeState, readStateFromUrl, pushStateToUrl, generateShareUrl, validatePublishableState, type ShareableState } from '../services/urlState'
+import { createCombo, getCombo, getShortComboUrl, updateCombo, type ComboVisibility } from '../services/comboApi'
+import { useAuth } from '../context/AuthContext'
 import { fetchAndCacheCards } from '../services/cardCache'
 import { readYDKFile } from '../utils/ydkParser'
 import { trackEvent } from '../services/analytics'
@@ -12,15 +15,19 @@ import ComboStepList from '../components/ComboStepList'
 import { createInitialBoard, extractInitialStateInfo, replayCombo } from '../game/replay'
 
 export default function SimulatorPage() {
+  const { slug } = useParams<{ slug: string }>()
   const game = useGame()
   const deck = useDeck()
+  const { configured, user, signIn } = useAuth()
   const [selectedCard, setSelectedCard] = useState<CardData | undefined | null>(undefined)
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
   const [toast, setToast] = useState<{ msg: string, type: string } | null>(null)
   const [deckName, setDeckName] = useState('')
-  const [mainDeck, setMainDeck] = useState<number[]>([])
-  const [extraDeck, setExtraDeck] = useState<number[]>([])
+  const [, setMainDeck] = useState<number[]>([])
+  const [, setExtraDeck] = useState<number[]>([])
+  const [showLoginOptions, setShowLoginOptions] = useState(false)
+  const [savedVisibility, setSavedVisibility] = useState<ComboVisibility>('unlisted')
   const fileInputRef = useRef<HTMLInputElement>(null)
   // Snapshot deck at mount time so the load effect runs only once
   const deckSnapshotRef = useRef({ mainDeck: deck.mainDeck, extraDeck: deck.extraDeck, deckName: deck.deckName })
@@ -40,10 +47,14 @@ export default function SimulatorPage() {
       try {
         setLoading(true)
         const hash = window.location.hash
-        if (hash && hash.length > 5) {
-          const state = readStateFromUrl()
-          console.log("Loaded state from URL:", state)
-          if (state) {
+        if (slug || (hash && hash.length > 5)) {
+          const state = slug ? getCombo(slug).then(combo => {
+            setSavedVisibility(combo.visibility)
+            return combo.payload
+          }) : readStateFromUrl()
+          const resolvedState = await state
+          if (resolvedState) {
+            const state = resolvedState
             setDeckName(state.name || '')
             setMainDeck(state.main || [])
             setExtraDeck(state.extra || [])
@@ -106,7 +117,7 @@ export default function SimulatorPage() {
     }
     loadInitial()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // intentionally run only once on mount
+  }, [slug]) // reload when a compact combo link is opened
 
   // YDK file import
   const handleFileImport = useCallback(async (file: File) => {
@@ -145,47 +156,9 @@ export default function SimulatorPage() {
     }
   }, [handleFileImport])
 
-  // Share URL state
-  const handleShare = useCallback(() => {
-    const mainIds: number[] = []
-    const extraIds: number[] = []
-
-    const collectIds = (zone: string) => {
-      const item = game.board[zone] as CardInstance[] | CardInstance | null | undefined | number
-      if (item) {
-        if (Array.isArray(item)) {
-          item.forEach(c => {
-            if (zone === 'extra') extraIds.push(c.cardId)
-            else mainIds.push(c.cardId)
-          })
-        } else if (typeof item === 'object' && 'cardId' in item) {
-          mainIds.push(item.cardId)
-        }
-        else {
-          console.warn(`Unexpected item type in zone ${zone}:`, item)
-        }
-      }
-    }
-
-    collectIds('hand')
-    collectIds('gy')
-    collectIds('egy')
-    collectIds('ebanish')
-    collectIds('banish')
-    collectIds('deck')
-    collectIds('extra')
-    collectIds('eextra')
-    collectIds('free')
-    collectIds('efree')
-    collectIds('m1'); collectIds('m2'); collectIds('m3')
-    collectIds('em1'); collectIds('em2'); collectIds('em3')
-    collectIds('st1'); collectIds('st2'); collectIds('st3')
-    collectIds('est1'); collectIds('est2'); collectIds('est3')
-    collectIds('field')
-    collectIds('efield')
-
+  const buildShareState = useCallback((): ShareableState => {
     const { init, tokens } = extractInitialStateInfo(game.history[0])
-    const state = {
+    return {
       main: game.initialMainIds.current,
       extra: game.initialExtraIds.current,
       combo: game.combo,
@@ -193,6 +166,11 @@ export default function SimulatorPage() {
       init,
       tokens,
     }
+  }, [deckName, game.combo, game.history, game.initialExtraIds, game.initialMainIds])
+
+  // Full links remain anonymous and self-contained.
+  const handleShare = useCallback(() => {
+    const state = buildShareState()
 
     const shareUrl = generateShareUrl(state)
     navigator.clipboard.writeText(shareUrl)
@@ -202,7 +180,47 @@ export default function SimulatorPage() {
         trackEvent('combo_shared', { step_count: game.combo.length })
       })
       .catch(() => showToast('Failed to copy link', 'error'))
-  }, [game.board, game.combo, mainDeck, extraDeck, deckName])
+  }, [buildShareState, game.combo.length, showToast])
+
+  const handlePublish = useCallback(async () => {
+    const state = buildShareState()
+    const validationError = validatePublishableState(state)
+    if (validationError) return showToast(validationError, 'error')
+    if (!configured) return showToast('Online sharing is not configured for this site.', 'error')
+    if (!user) {
+      pushStateToUrl(state)
+      sessionStorage.setItem('pendingComboState', encodeState(state))
+      setShowLoginOptions(true)
+      return
+    }
+    try {
+      const combo = slug
+        ? await updateCombo(slug, { title: state.name || 'Untitled combo', visibility: savedVisibility, payload: state })
+        : await createCombo({ title: state.name || 'Untitled combo', visibility: 'unlisted', payload: state })
+      const url = getShortComboUrl(combo.slug)
+      await navigator.clipboard.writeText(url)
+      showToast(slug ? 'Published combo updated and copied!' : 'Short link published and copied!', 'success')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to publish combo.', 'error')
+    }
+  }, [buildShareState, configured, savedVisibility, showToast, slug, user])
+
+  const beginLogin = useCallback(async (provider: 'google' | 'discord') => {
+    sessionStorage.setItem('pendingComboPublish', 'true')
+    try {
+      await signIn(provider)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to start sign-in.', 'error')
+    }
+  }, [showToast, signIn])
+
+  useEffect(() => {
+    if (!loading && user && sessionStorage.getItem('pendingComboPublish') === 'true') {
+      sessionStorage.removeItem('pendingComboPublish')
+      sessionStorage.removeItem('pendingComboState')
+      void handlePublish()
+    }
+  }, [handlePublish, loading, user])
 
   if (loading) {
     return (
@@ -265,7 +283,7 @@ export default function SimulatorPage() {
   )
 
   const comboPanel = (
-    <ComboRecorderPanel game={game} onShare={handleShare} />
+    <ComboRecorderPanel game={game} onShare={handleShare} onPublish={() => void handlePublish()} onlineSharing={configured} />
   )
 
   return (
@@ -291,6 +309,16 @@ export default function SimulatorPage() {
         <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-xl animate-slide-up ${toast.type === 'error' ? 'bg-[var(--color-accent-rose)] text-white' : 'bg-[var(--color-accent-teal)] text-white'
           }`}>
           {toast.msg}
+        </div>
+      )}
+      {showLoginOptions && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="glass-panel max-w-sm p-6 text-center">
+            <h2 className="text-lg font-bold mb-2">Sign in to publish</h2>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-5">Your current combo will be kept in the full link while you sign in.</p>
+            <div className="flex gap-3 justify-center"><button onClick={() => void beginLogin('google')} className="px-4 py-2 rounded bg-[var(--color-gold-500)] text-[var(--color-bg-primary)] font-semibold">Google</button><button onClick={() => void beginLogin('discord')} className="px-4 py-2 rounded border border-[var(--color-border)]">Discord</button></div>
+            <button onClick={() => setShowLoginOptions(false)} className="mt-4 text-sm text-[var(--color-text-secondary)]">Cancel</button>
+          </div>
         </div>
       )}
     </div>
@@ -374,9 +402,13 @@ function CardStatsPanel({
 function ComboRecorderPanel({
   game,
   onShare,
+  onPublish,
+  onlineSharing,
 }: {
   game: GameContextValue
   onShare: () => void
+  onPublish: () => void
+  onlineSharing: boolean
 }) {
   const handleStartRecording = () => {
     game.startRecording()
@@ -423,8 +455,15 @@ function ComboRecorderPanel({
             disabled={game.combo.length === 0}
             className="py-1.5 px-3 rounded bg-[var(--color-gold-500)] text-[var(--color-bg-primary)] font-semibold text-xs transition-colors hover:bg-[var(--color-gold-400)] disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            🔗 Share
+            Full link
           </button>
+          {onlineSharing && <button
+            onClick={onPublish}
+            disabled={game.combo.length === 0}
+            className="py-1.5 px-3 rounded border border-[var(--color-gold-500)] text-[var(--color-gold-400)] font-semibold text-xs transition-colors hover:bg-[var(--color-gold-500)]/10 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Publish
+          </button>}
         </div>
 
         <div className="flex items-center justify-between gap-1 mt-1">

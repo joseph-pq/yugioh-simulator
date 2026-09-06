@@ -1,6 +1,8 @@
 import { Outlet, NavLink } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 export default function Layout() {
+  const { configured, user } = useAuth()
   return (
     <div className="min-h-dvh flex flex-col">
       {/* Navigation */}
@@ -43,6 +45,21 @@ export default function Layout() {
             >
               Simulator
             </NavLink>
+            {configured && (
+              <NavLink
+                to="/combos"
+                className={({ isActive }) =>
+                  `px-2 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-[var(--color-gold-500)]/15 text-[var(--color-gold-400)]'
+                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)]'
+                  }`
+                }
+              >
+                <span className="hidden sm:inline">{user ? 'My Combos' : 'Sign in'}</span>
+                <span className="sm:hidden">Account</span>
+              </NavLink>
+            )}
           </div>
 
           {/* GitHub Link */}

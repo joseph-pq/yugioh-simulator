@@ -31,6 +31,12 @@ npm run dev
 
 Open http://localhost:5173.
 
+### Optional online sharing
+
+The simulator works entirely locally without an account. To enable signed-in short links, copy `.env.example` to `.env.local` and set the public Supabase URL and publishable key. Apply the migrations and deploy `supabase/functions/combos` to the same project, then configure Google and Discord OAuth redirect URLs for both `http://localhost:5173` and `https://joseph-pq.github.io/yugioh-simulator/`.
+
+Set `RATE_LIMIT_SALT` only as a Supabase Edge Function secret before deployment. Deploy the function with `npx supabase functions deploy combos --no-verify-jwt`: public reads need to reach the function, and the function itself verifies a valid JWT before every mutation. Never place service-role keys, secret keys, OAuth client secrets, or the rate-limit salt in Vite environment variables. The function reads Supabase's built-in `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` server secrets.
+
 ## License
 
 [MIT](LICENSE)
